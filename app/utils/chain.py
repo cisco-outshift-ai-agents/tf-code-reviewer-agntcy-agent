@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable

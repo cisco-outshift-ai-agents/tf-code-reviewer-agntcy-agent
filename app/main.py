@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
+
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -64,7 +67,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     - On shutdown: Logs a shutdown message.
     - Can be extended to initialize resources (e.g., database connections).
     """
-    logging.info("Starting Remote Graphs App...")
+    logging.info("Starting TF Code Reviewer Agent...")
 
     # Example: Attach database connection to app state (if needed)
     # app.state.db = await init_db_connection()

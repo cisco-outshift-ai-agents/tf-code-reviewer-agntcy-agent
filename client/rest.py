@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
+# SPDX-License-Identifier: Apache-2.0
 # Description: This file contains a sample graph client that makes a stateless request to the Remote Graph Server.
 # Usage: python3 client/rest.py
 
