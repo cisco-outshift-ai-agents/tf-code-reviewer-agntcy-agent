@@ -213,7 +213,7 @@ if __name__ == "__main__":
     resource "aws_security_group" "example" {
     name        = "example-sg"
     description = "Security group with open ingress"
- 
+
     ingress {
         from_port   = 0
         to_port     = 0

@@ -13,7 +13,8 @@ from core.config import settings
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
-from models.models import Any, ErrorResponse, ReviewComments, RunCreateStateless, Union
+from langchain_core.language_models import BaseChatModel
+from models.models import ErrorResponse, ReviewComments, RunCreateStateless
 from utils.chain import create_code_reviewer_chain
 from utils.wrap_prompt import wrap_prompt
 
@@ -35,9 +36,9 @@ USE_AZURE = all(
 if USE_AZURE:
     logger.info("Using Azure OpenAI GPT-4o for Code Review.")
     # Initialize Azure OpenAI model
-    llm_chain = AzureChatOpenAI(
+    llm_chain: BaseChatModel = AzureChatOpenAI(
         azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        openai_api_key=settings.AZURE_OPENAI_API_KEY,
+        api_key=settings.AZURE_OPENAI_API_KEY,
         azure_deployment=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
         api_version=settings.AZURE_OPENAI_API_VERSION,
         temperature=settings.AZURE_OPENAI_TEMPERATURE,
@@ -46,8 +47,8 @@ else:
     logger.info("Using OpenAI GPT-4o for Code Review.")
     # Initialize OpenAI GPT model
     llm_chain = ChatOpenAI(
-        model_name=settings.OPENAI_MODEL_NAME,
-        openai_api_key=settings.OPENAI_API_KEY,
+        model=settings.OPENAI_MODEL_NAME,
+        api_key=settings.OPENAI_API_KEY,
         temperature=settings.OPENAI_TEMPERATURE,
     )
 
