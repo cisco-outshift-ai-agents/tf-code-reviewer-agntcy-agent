@@ -119,11 +119,21 @@ def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorRespons
                 "The first element in 'input.messages' should be a dictionary."
             )
 
+        first_message_content = first_message.get("content")
+
+        if first_message_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'content' in the first message of 'input.messages'."
+                )
+
         # Extract the 'content' from the first message.
-        pr_details = json.loads(first_message.get("content"))
-        if pr_details is None:
-            raise ValueError(
-                "Missing 'content' in the first message of 'input.messages'."
+        try:
+            pr_details = json.loads(first_message_content)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{e}",
             )
 
         # Extract expected GitHubPRState fields
