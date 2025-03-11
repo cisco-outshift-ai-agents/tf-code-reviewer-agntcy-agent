@@ -172,3 +172,5 @@ cython_debug/
 
 #Macos files
 .DS_Store
+
+.langgraph_api/
