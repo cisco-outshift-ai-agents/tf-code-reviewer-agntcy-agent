@@ -35,9 +35,9 @@ class Settings(BaseSettings):
     AZURE_OPENAI_TEMPERATURE: float = os.getenv("AZURE_OPENAI_TEMPERATURE", 0.7)
 
     # # If Using OpenAI Configuration
-    # OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "")
+    OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4o")
     # OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-    # OPENAI_TEMPERATURE: float = os.getenv("OPENAI_TEMPERATURE", 0.7)
+    OPENAI_TEMPERATURE: float = os.getenv("OPENAI_TEMPERATURE", 0.7)
 
 
 settings = Settings()  # type: ignore

@@ -7,7 +7,10 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any, Union
+
+from pydantic import SecretStr
 
 from core.config import settings
 from fastapi import APIRouter, HTTPException, status
@@ -47,9 +50,9 @@ else:
     logger.info("Using OpenAI GPT-4o for Code Review.")
     # Initialize OpenAI GPT model
     llm_chain = ChatOpenAI(
-        model=settings.OPENAI_MODEL_NAME,
-        api_key=settings.OPENAI_API_KEY,
-        temperature=settings.OPENAI_TEMPERATURE,
+        model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
+        api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") is not None else None,
+        temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
     )
 
 # Create the structured output chain
