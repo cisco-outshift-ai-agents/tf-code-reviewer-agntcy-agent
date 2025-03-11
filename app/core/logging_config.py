@@ -1,9 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
+import json
 import logging
 import logging.config
 import os
-import json
 import traceback
 from pathlib import Path
 from typing import Dict
@@ -19,7 +19,9 @@ class JSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_data = {
-            "timestamp": self.formatTime(record),  # Corrected: Uses default ISO 8601 format
+            "timestamp": self.formatTime(
+                record
+            ),  # Corrected: Uses default ISO 8601 format
             "level": record.levelname,
             "message": record.getMessage(),
             "module": record.module,
@@ -113,9 +115,21 @@ def get_logging_config(log_file: Path, log_level: str) -> Dict:
             },
         },
         "loggers": {
-            "uvicorn": {"handlers": ["console", "file"], "level": log_level, "propagate": False},
-            "fastapi": {"handlers": ["console", "file"], "level": log_level, "propagate": False},
-            "app": {"handlers": ["console", "file"], "level": log_level, "propagate": False},
+            "uvicorn": {
+                "handlers": ["console", "file"],
+                "level": log_level,
+                "propagate": False,
+            },
+            "fastapi": {
+                "handlers": ["console", "file"],
+                "level": log_level,
+                "propagate": False,
+            },
+            "app": {
+                "handlers": ["console", "file"],
+                "level": log_level,
+                "propagate": False,
+            },
             "remote_graphs": {  # Keep for compatibility
                 "handlers": ["console", "file"],
                 "level": log_level,

@@ -1,10 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
 
-import subprocess
-import logging
-from packaging.requirements import Requirement
 import importlib.metadata
+import logging
+import subprocess
+
+from packaging.requirements import Requirement
 
 logging.basicConfig(level=logging.INFO)
 

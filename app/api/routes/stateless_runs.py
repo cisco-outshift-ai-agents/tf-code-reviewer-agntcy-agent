@@ -5,54 +5,59 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import os
-import json
-from fastapi import APIRouter, HTTPException, Response, status
-from fastapi.responses import JSONResponse
-from models.models import Any, ErrorResponse, RunCreateStateless, Union, ReviewComments
-from utils.chain import create_code_reviewer_chain
-from langchain_openai import AzureChatOpenAI
-from langchain_openai import ChatOpenAI
-from typing import Any, Dict, List, Union
-from utils.wrap_prompt import wrap_prompt
-from core.config import settings
+from typing import Any, Union
 
+from pydantic import SecretStr
+
+from core.config import settings
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_core.language_models import BaseChatModel
+from models.models import ErrorResponse, ReviewComments, RunCreateStateless
+from utils.chain import create_code_reviewer_chain
+from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
 
 # Check for Azure OpenAI credentials
-USE_AZURE = all([
-    settings.AZURE_OPENAI_API_KEY,
-    settings.AZURE_OPENAI_ENDPOINT,
-    settings.AZURE_OPENAI_DEPLOYMENT_NAME,
-    settings.AZURE_OPENAI_API_VERSION,
-    settings.AZURE_OPENAI_TEMPERATURE
-])
+USE_AZURE = all(
+    [
+        settings.AZURE_OPENAI_API_KEY,
+        settings.AZURE_OPENAI_ENDPOINT,
+        settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+        settings.AZURE_OPENAI_API_VERSION,
+        settings.AZURE_OPENAI_TEMPERATURE,
+    ]
+)
 
 
 if USE_AZURE:
     logger.info("Using Azure OpenAI GPT-4o for Code Review.")
     # Initialize Azure OpenAI model
-    llm_chain = AzureChatOpenAI(
+    llm_chain: BaseChatModel = AzureChatOpenAI(
         azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        openai_api_key=settings.AZURE_OPENAI_API_KEY,
+        api_key=settings.AZURE_OPENAI_API_KEY,
         azure_deployment=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
         api_version=settings.AZURE_OPENAI_API_VERSION,
-        temperature=settings.AZURE_OPENAI_TEMPERATURE
+        temperature=settings.AZURE_OPENAI_TEMPERATURE,
     )
 else:
     logger.info("Using OpenAI GPT-4o for Code Review.")
     # Initialize OpenAI GPT model
     llm_chain = ChatOpenAI(
-        model_name=settings.OPENAI_MODEL_NAME,
-        openai_api_key=settings.OPENAI_API_KEY,
-        temperature=settings.OPENAI_TEMPERATURE
+        model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
+        api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") is not None else None,
+        temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
     )
 
 # Create the structured output chain
 code_reviewer_chain = create_code_reviewer_chain(llm_chain)
+
 
 @router.post(
     "/runs",
@@ -104,39 +109,49 @@ def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorRespons
         # Retrieve the 'messages' list from the 'input' dictionary.
         messages = input_field.get("messages")
         if not isinstance(messages, list) or not messages:
-            raise ValueError(
-                "The 'input.messages' field should be a non-empty list."
-            )
+            raise ValueError("The 'input.messages' field should be a non-empty list.")
 
         # Access the first message in the list.
         first_message = messages[0]
-        
+
         if not isinstance(first_message, dict):
             raise ValueError(
                 "The first element in 'input.messages' should be a dictionary."
             )
 
+        first_message_content = first_message.get("content")
+
+        if first_message_content is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing 'content' in the first message of 'input.messages'."
+                )
+
         # Extract the 'content' from the first message.
-        pr_details = json.loads(first_message.get("content"))
-        if pr_details is None:
-            raise ValueError(
-                "Missing 'content' in the first message of 'input.messages'."
+        try:
+            pr_details = json.loads(first_message_content)
+        except json.JSONDecodeError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"{e}",
             )
-            
+
         # Extract expected GitHubPRState fields
         context_files = pr_details.get("context_files", [])
         changes = pr_details.get("changes", [])
         static_analyzer_output = pr_details.get("static_analyzer_output", "")
-        
+
         if not context_files or not changes or not static_analyzer_output:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                                detail="Missing required fields: context_files, changes, or static_analyzer_output.")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing required fields: context_files, changes, or static_analyzer_output.",
+            )
 
         logger.info("Received valid request. Processing code review.")
-        
+
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
-        
+
         response: ReviewComments = code_reviewer_chain.invoke(
             {
                 "question": wrap_prompt(
@@ -146,7 +161,7 @@ def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorRespons
                     "CHANGES:" f"{changes}",
                     "",
                     "STATIC_ANALYZER_OUTPUT:",
-                    f"{static_analyzer_output}"
+                    f"{static_analyzer_output}",
                 )
             }
         )
@@ -164,20 +179,32 @@ def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorRespons
             detail=exc,
         )
 
-    messages = {"messages": [{"role": "assistant", "content": [comment.model_dump() for comment in response.issues if comment.line_number != 0]}]}
+    messages = {
+        "messages": [
+            {
+                "role": "assistant",
+                "content": [
+                    comment.model_dump()
+                    for comment in response.issues
+                    if comment.line_number != 0
+                ],
+            }
+        ]
+    }
 
     # payload to send to autogen server at /runs endpoint
     payload = {
         "agent_id": agent_id,
         "output": messages,
         "model": "gpt-4o",
-        "metadata": {"id": message_id}
+        "metadata": {"id": message_id},
     }
 
     logger.info(f"Payload: {payload}")
 
     # In a real application, additional processing (like starting a background task) would occur here.
     return JSONResponse(content=payload, status_code=status.HTTP_200_OK)
+
 
 @router.post(
     "/runs/stream",

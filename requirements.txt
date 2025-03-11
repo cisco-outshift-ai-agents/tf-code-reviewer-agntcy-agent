@@ -12,5 +12,6 @@ pydantic-settings==2.8.1
 uvicorn==0.34.0
 requests==2.32.3
 langgraph-cli[inmem]==0.1.74
+langchain-openai==0.3.8
 # If you need to debug langgraph studio
 # debugpy==1.8.12

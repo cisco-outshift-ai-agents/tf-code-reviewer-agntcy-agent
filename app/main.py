@@ -3,21 +3,20 @@
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-import os
 import logging
+import os
+from contextlib import asynccontextmanager
 from typing import AsyncGenerator
-from dotenv import load_dotenv, find_dotenv
 
-from fastapi import FastAPI
-from fastapi.routing import APIRoute
-from fastapi.responses import FileResponse
-from starlette.middleware.cors import CORSMiddleware
 import uvicorn
-
 from api.routes import stateless_runs
-from core.logging_config import configure_logging
 from core.config import settings
+from core.logging_config import configure_logging
+from dotenv import find_dotenv, load_dotenv
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.routing import APIRoute
+from starlette.middleware.cors import CORSMiddleware
 
 
 def load_environment_variables(env_file: str | None = None) -> None:

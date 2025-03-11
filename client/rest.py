@@ -5,19 +5,16 @@
 
 import json
 import traceback
-from typing import Annotated, TypedDict, List, Dict
 import uuid
+from typing import Annotated, Any, Dict, List, TypedDict
 
-from dotenv import find_dotenv, load_dotenv
 import requests
-from requests.exceptions import RequestException, HTTPError, Timeout, ConnectionError
-
-from langchain_core.messages import HumanMessage, BaseMessage, AIMessage
-from langgraph.graph import START, END, StateGraph
+from dotenv import find_dotenv, load_dotenv
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-
-from typing import Dict, Any
 from logging_config import configure_logging
+from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 # Initialize logger
 logger = configure_logging()
@@ -202,19 +199,21 @@ def build_graph() -> Any:
 
 # Main execution
 if __name__ == "__main__":
-    
-    context_files = ["""
+
+    context_files = [
+        """
     resource "aws_s3_bucket" "example" {
     bucket = "my-public-bucket"
     acl    = "public-read"
     }
-    """]
+    """
+    ]
 
     changes = """
     resource "aws_security_group" "example" {
     name        = "example-sg"
     description = "Security group with open ingress"
-    
+
     ingress {
         from_port   = 0
         to_port     = 0
@@ -224,18 +223,25 @@ if __name__ == "__main__":
     }
     """
 
-    analysis_reports = "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
+    analysis_reports = (
+        "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
+    )
 
     graph = build_graph()
 
-    
     inputs = {
         "messages": [
-            HumanMessage(content=json.dumps({
-                "context_files": [{"path": "example.py", "content": context_files}],
-                "changes": [{"file": "example.py", "diff": changes}],
-                "static_analyzer_output": analysis_reports
-            }))
+            HumanMessage(
+                content=json.dumps(
+                    {
+                        "context_files": [
+                            {"path": "example.py", "content": context_files}
+                        ],
+                        "changes": [{"file": "example.py", "diff": changes}],
+                        "static_analyzer_output": analysis_reports,
+                    }
+                )
+            )
         ]
     }
 
