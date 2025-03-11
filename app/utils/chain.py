@@ -1,13 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 Cisco and/or its affiliates.
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import cast
+
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
-from typing import cast
-
-from utils.wrap_prompt import wrap_prompt
 from models.models import ReviewComments
+from utils.wrap_prompt import wrap_prompt
 
 
 def create_code_reviewer_chain(model: BaseChatModel) -> RunnableSerializable[dict, dict | ReviewComments]:
