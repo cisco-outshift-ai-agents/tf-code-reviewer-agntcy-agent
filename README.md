@@ -25,6 +25,39 @@ This repository contains a Terraform Code Reviewer AI Agent Protocol FastAPI app
    pip install -r requirements.txt
    ```
 
+## Environment Setup
+
+Before using the agent, you need to configure **API keys** for OpenAI or Azure OpenAI.
+
+### **1️⃣ Create a `.env` File**
+
+```sh
+touch .env
+```
+
+### **2️⃣ Add API Keys**
+
+#### **✅ OpenAI API Configuration**
+
+```
+OPENAI_API_KEY=your-openai-api-key-here
+OPENAI_MODEL_NAME=gpt-4o
+OPENAI_TEMPERATURE=0.7
+...
+```
+
+#### **✅ Azure OpenAI API Configuration**
+
+```
+AZURE_OPENAI_API_KEY=your-azure-api-key-here
+AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o
+AZURE_OPENAI_API_VERSION=2025-01-01-preview
+...
+```
+
+---
+
 ## Running the Application
 
 ### Server
