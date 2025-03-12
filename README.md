@@ -134,6 +134,31 @@ Change to `client` folder
 langgraph dev
 ```
 
+Paste sample input:
+
+```json
+{
+   "context_files":[
+      {
+         "path":"example.py",
+         "content":[
+            "\\n    resource \"aws_s3_bucket\" \"example\" {\\n    bucket = \"my-public-bucket\"\\n    acl    = \"public-read\"\\n    }\\n    "
+         ]
+      }
+   ],
+   "changes":[
+      {
+         "file":"example.py",
+         "diff":"\\n    resource \"aws_security_group\" \"example\" {\\n    name        = \"example-sg\"\\n    description = \"Security group with open ingress\"\\n\\n    ingress {\\n        from_port   = 0\\n        to_port     = 0\\n        protocol    = \"-1\"\\n        cidr_blocks = [\"0.0.0.0/0\"]\\n    }\\n    }\\n    "
+      }
+   ],
+   "static_analyzer_output":"Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
+}
+
+```
+
+Expected Output:
+
 ![Langgraph Studio](./docs/imgs/studio.png "Studio")
 
 ## Contributing
