@@ -161,9 +161,31 @@ Expected Output:
 
 ![Langgraph Studio](./docs/imgs/studio.png "Studio")
 
+## Roadmap
+
+See the [open issues](https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent/issues) for a list
+of proposed features (and known issues).
+
 ## Contributing
 
-1. Fork the repository.
-2. Create a feature branch.
-3. Make your changes and ensure tests pass.
-4. Submit a pull request.
+Contributions are what make the open source community such an amazing place to
+learn, inspire, and create. Any contributions you make are **greatly
+appreciated**. For detailed contributing guidelines, please see
+[CONTRIBUTING.md](CONTRIBUTING.md)
+
+## License
+
+Distributed under the `Apache-2.0` License. See [LICENSE](LICENSE) for more
+information.
+
+## Contact
+
+Jasvir Dhillon - [@jsd784](https://github.com/jsd784) - jasvdhil@cisco.com
+
+Project Link:
+[https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent](https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent)
+
+## Acknowledgements
+
+This template was adapted from
+[https://github.com/othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template).
