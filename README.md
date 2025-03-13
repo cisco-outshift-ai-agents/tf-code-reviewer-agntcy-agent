@@ -140,7 +140,7 @@ Paste sample input:
 {
    "context_files":[
       {
-         "path":"example.py",
+         "path":"example.tf",
          "content":[
             "\\n    resource \"aws_s3_bucket\" \"example\" {\\n    bucket = \"my-public-bucket\"\\n    acl    = \"public-read\"\\n    }\\n    "
          ]
@@ -148,7 +148,7 @@ Paste sample input:
    ],
    "changes":[
       {
-         "file":"example.py",
+         "file":"example.tf",
          "diff":"\\n    resource \"aws_security_group\" \"example\" {\\n    name        = \"example-sg\"\\n    description = \"Security group with open ingress\"\\n\\n    ingress {\\n        from_port   = 0\\n        to_port     = 0\\n        protocol    = \"-1\"\\n        cidr_blocks = [\"0.0.0.0/0\"]\\n    }\\n    }\\n    "
       }
    ],
