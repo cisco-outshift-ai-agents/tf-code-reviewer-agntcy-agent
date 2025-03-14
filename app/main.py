@@ -8,6 +8,8 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from pydantic import SecretStr
+
 import uvicorn
 from api.routes import stateless_runs
 from core.config import settings
@@ -17,6 +19,9 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.routing import APIRoute
 from starlette.middleware.cors import CORSMiddleware
+from langchain_core.language_models import BaseChatModel
+from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from utils.chain import create_code_reviewer_chain
 
 
 def load_environment_variables(env_file: str | None = None) -> None:
@@ -46,6 +51,43 @@ def load_environment_variables(env_file: str | None = None) -> None:
     else:
         logging.warning("No .env file found. Ensure environment variables are set.")
 
+def initialize_chain() -> BaseChatModel:
+    """
+    Initializes the LLM chain based on the available OpenAI or Azure OpenAI credentials.
+
+    Returns:
+        BaseChatModel: Initialized LLM chain instance.
+    """
+    USE_AZURE = all(
+        [
+            settings.AZURE_OPENAI_API_KEY,
+            settings.AZURE_OPENAI_ENDPOINT,
+            settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+            settings.AZURE_OPENAI_API_VERSION,
+            settings.AZURE_OPENAI_TEMPERATURE,
+        ]
+    )
+
+    if USE_AZURE:
+        logging.info("Using Azure OpenAI GPT-4o for Code Review.")
+        # Initialize Azure OpenAI model
+        llm_chain: BaseChatModel = AzureChatOpenAI(
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            azure_deployment=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
+            api_version=settings.AZURE_OPENAI_API_VERSION,
+            temperature=settings.AZURE_OPENAI_TEMPERATURE,
+        )
+    else:
+        logging.info("Using OpenAI GPT-4o for Code Review.")
+        # Initialize OpenAI GPT model
+        llm_chain = ChatOpenAI(
+            model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
+            api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") else None,
+            temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
+        )
+
+    return create_code_reviewer_chain(llm_chain)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -70,6 +112,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Example: Attach database connection to app state (if needed)
     # app.state.db = await init_db_connection()
+
+    # Initialize the LLM Chain and store it in app state
+    app.state.code_reviewer_chain = initialize_chain()
 
     yield  # Application runs while 'yield' is in effect.
 

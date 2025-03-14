@@ -10,53 +10,30 @@ import logging
 import os
 from typing import Any, Union
 
-from pydantic import SecretStr
-
 from core.config import settings
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, FastAPI, Request
 from fastapi.responses import JSONResponse
-from langchain_openai import AzureChatOpenAI, ChatOpenAI
-from langchain_core.language_models import BaseChatModel
 from models.models import ErrorResponse, ReviewComments, RunCreateStateless
-from utils.chain import create_code_reviewer_chain
 from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
 
-# Check for Azure OpenAI credentials
-USE_AZURE = all(
-    [
-        settings.AZURE_OPENAI_API_KEY,
-        settings.AZURE_OPENAI_ENDPOINT,
-        settings.AZURE_OPENAI_DEPLOYMENT_NAME,
-        settings.AZURE_OPENAI_API_VERSION,
-        settings.AZURE_OPENAI_TEMPERATURE,
-    ]
-)
+def get_code_reviewer_chain(app: FastAPI):
+    """
+    Retrieves the initialized CodeReviewer instance from FastAPI app state.
 
+    Args:
+        app (FastAPI): The FastAPI application instance.
 
-if USE_AZURE:
-    logger.info("Using Azure OpenAI GPT-4o for Code Review.")
-    # Initialize Azure OpenAI model
-    llm_chain: BaseChatModel = AzureChatOpenAI(
-        azure_endpoint=settings.AZURE_OPENAI_ENDPOINT,
-        api_key=settings.AZURE_OPENAI_API_KEY,
-        azure_deployment=settings.AZURE_OPENAI_DEPLOYMENT_NAME,
-        api_version=settings.AZURE_OPENAI_API_VERSION,
-        temperature=settings.AZURE_OPENAI_TEMPERATURE,
-    )
-else:
-    logger.info("Using OpenAI GPT-4o for Code Review.")
-    # Initialize OpenAI GPT model
-    llm_chain = ChatOpenAI(
-        model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
-        api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") is not None else None,
-        temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
-    )
+    Returns:
+        CodeReviewer: The initialized CodeReviewer instance.
+    """
+    code_reviewer_chain = app.state.code_reviewer_chain
+    if code_reviewer_chain is None:
+        raise HTTPException(status_code=500, detail="CodeReviewer not initialized")
+    return code_reviewer_chain
 
-# Create the structured output chain
-code_reviewer_chain = create_code_reviewer_chain(llm_chain)
 
 
 @router.post(
@@ -69,11 +46,13 @@ code_reviewer_chain = create_code_reviewer_chain(llm_chain)
     },
     tags=["Stateless Runs"],
 )
-def run_stateless_runs_post(body: RunCreateStateless) -> Union[Any, ErrorResponse]:
+def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union[Any, ErrorResponse]:
     """
     Create Background Run
     """
     try:
+        app = request.app
+        code_reviewer_chain = get_code_reviewer_chain(app)
         # Convert the validated Pydantic model to a dictionary.
         # Using model_dump() is recommended in Pydantic v2 over the deprecated dict() method.
         payload = body.model_dump()

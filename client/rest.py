@@ -68,7 +68,7 @@ def decode_response(response_data: Dict[str, Any]) -> Dict[str, Any]:
         metadata = response_data.get("metadata", {})
 
         # Extract messages if present
-        messages = output.get("messages", [])
+        messages = output.get("messages")
 
         return {
             "agent_id": agent_id,
@@ -105,7 +105,7 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
     # Extract the latest user query
     query = state["messages"][-1].content
     # query = state["messages"][-1].content
-    logger.info(json.dumps({"event": "sending_request", "query": query}))
+    logger.info({"event": "sending_request", "query": json.loads(query)})
 
     # Request headers
     headers = {
@@ -200,7 +200,7 @@ def build_graph() -> Any:
 # Main execution
 if __name__ == "__main__":
 
-    context_files = [
+    CONTEXT_FILES = [
         """
     resource "aws_s3_bucket" "example" {
     bucket = "my-public-bucket"
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     """
     ]
 
-    changes = """
+    CHANGES = """
     resource "aws_security_group" "example" {
     name        = "example-sg"
     description = "Security group with open ingress"
@@ -223,28 +223,30 @@ if __name__ == "__main__":
     }
     """
 
-    analysis_reports = (
+    ANALYSIS_REPORTS = (
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
+    
+    tf_input =  {
+                    "context_files": [
+                        {"path": "example.py", "content": CONTEXT_FILES}
+                    ],
+                    "changes": [{"file": "example.py", "diff": CHANGES}],
+                    "static_analyzer_output": ANALYSIS_REPORTS,
+                }
 
     graph = build_graph()
 
     inputs = {
         "messages": [
             HumanMessage(
-                content=json.dumps(
-                    {
-                        "context_files": [
-                            {"path": "example.py", "content": context_files}
-                        ],
-                        "changes": [{"file": "example.py", "diff": changes}],
-                        "static_analyzer_output": analysis_reports,
-                    }
-                )
+                content=json.dumps(tf_input)
             )
         ]
     }
 
-    logger.info({"event": "invoking_graph", "inputs": inputs})
+    logger.info({"event": "invoking_graph", "inputs": tf_input})
     result = graph.invoke(inputs)
-    logger.info({"event": "final_result", "result": result})
+
+    output = result["messages"][-1].content
+    logger.info({"event": "final_result", "result": output})
