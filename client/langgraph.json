@@ -3,5 +3,5 @@
     "graphs": {
         "remote_graphs": "./rest.py:build_graph"
     },
-    "env": "./.env"
+    "env": "../.env"
 }

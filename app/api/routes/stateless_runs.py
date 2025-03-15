@@ -7,17 +7,19 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from typing import Any, Union
 
-from core.config import settings
 from fastapi import APIRouter, HTTPException, status, FastAPI, Request
 from fastapi.responses import JSONResponse
 from models.models import ErrorResponse, ReviewComments, RunCreateStateless
 from utils.wrap_prompt import wrap_prompt
+from langchain_core.messages import AIMessage
+from langchain_core.messages.utils import convert_to_openai_messages
+
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
+
 
 def get_code_reviewer_chain(app: FastAPI):
     """
@@ -35,7 +37,6 @@ def get_code_reviewer_chain(app: FastAPI):
     return code_reviewer_chain
 
 
-
 @router.post(
     "/runs",
     response_model=Any,
@@ -46,7 +47,9 @@ def get_code_reviewer_chain(app: FastAPI):
     },
     tags=["Stateless Runs"],
 )
-def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union[Any, ErrorResponse]:
+def run_stateless_runs_post(
+    body: RunCreateStateless, request: Request
+) -> Union[Any, ErrorResponse]:
     """
     Create Background Run
     """
@@ -60,7 +63,7 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
 
         # Extract assistant_id from the payload
         agent_id = payload.get("agent_id")
-        logging.debug(f"Agent id: {agent_id}")
+        logging.debug("Agent id: %s", agent_id)
 
         # Validate that the assistant_id is not empty.
         if not payload.get("agent_id"):
@@ -72,6 +75,7 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
             )
 
         # Validate the config section: ensure that config.tags is a non-empty list.
+        message_id = None
         if (metadata := payload.get("metadata", None)) is not None:
             message_id = metadata.get("id")
 
@@ -103,8 +107,8 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
         if first_message_content is None:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Missing 'content' in the first message of 'input.messages'."
-                )
+                detail="Missing 'content' in the first message of 'input.messages'.",
+            )
 
         # Extract the 'content' from the first message.
         try:
@@ -113,7 +117,7 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"{e}",
-            )
+            ) from e
 
         # Extract expected GitHubPRState fields
         context_files = pr_details.get("context_files", [])
@@ -156,30 +160,23 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=exc,
-        )
+        ) from exc
 
-    messages = {
-        "messages": [
-            {
-                "role": "assistant",
-                "content": [
-                    comment.model_dump()
-                    for comment in response.issues
-                    if comment.line_number != 0
-                ],
-            }
-        ]
-    }
+    # Messages need to confirm to OpenAI format
+    # https://platform.openai.com/docs/guides/gpt/chat-completions-api
+
+    content = [comment.model_dump() for comment in response.issues if comment.line_number != 0]
+    messages = convert_to_openai_messages([AIMessage(json.dumps(content))])
 
     # payload to send to autogen server at /runs endpoint
     payload = {
         "agent_id": agent_id,
-        "output": messages,
+        "output": {"messages": messages},
         "model": "gpt-4o",
         "metadata": {"id": message_id},
     }
 
-    logger.info(f"Payload: {payload}")
+    logger.info("Payload: %s", payload)
 
     # In a real application, additional processing (like starting a background task) would occur here.
     return JSONResponse(content=payload, status_code=status.HTTP_200_OK)
