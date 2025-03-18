@@ -88,12 +88,6 @@ class GraphState(TypedDict):
 
     messages: Annotated[List[BaseMessage], add_messages]
 
-class ReviewRequest(BaseModel):
-    """Expected input format for code reviewer"""
-    context_files: List[Dict[str, Any]]
-    changes: List[Dict[str, Any]]
-    static_analyzer_output: Optional[str]
-
 # Graph node that makes a stateless request to the Remote Graph Server
 def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
     """
@@ -111,7 +105,7 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
 
     # Extract the latest user query
     query = state["messages"][-1].content
-    # query = state["messages"][-1].content
+
     logger.info({"event": "sending_request", "query": json.loads(query)})
 
     # Request headers
@@ -120,12 +114,10 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
         "Content-Type": "application/json",
     }
 
-    review_request = ReviewRequest(**json.loads(query))
-
     # payload to send to autogen server at /runs endpoint
     payload = {
         "agent_id": "remote_agent",
-        "input": review_request.model_dump(),
+        "input": json.loads(query),
         "model": "gpt-4o",
         "metadata": {"id": str(uuid.uuid4())},
     }
@@ -240,23 +232,26 @@ if __name__ == "__main__":
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
 
-    review_request = ReviewRequest(context_files=CONTEXT_FILES, changes=CHANGES, static_analyzer_output=ANALYSIS_REPORTS)
+    tf_input = {
+        "context_files": CONTEXT_FILES,
+        "changes": CHANGES,
+        "static_analyzer_output": ANALYSIS_REPORTS,
+    }
 
     graph = build_graph()
 
     inputs = {
         "messages": [
             HumanMessage(
-                content=review_request.model_dump_json()
+                content=json.dumps(tf_input)
             )
         ]
     }
 
 
-    logger.info({"event": "invoking_graph", "inputs": review_request.model_dump()})
+    logger.info({"event": "invoking_graph", "inputs": tf_input})
     result = graph.invoke(inputs)
 
-    # output = result["messages"][-1].content
+    output = result["messages"][-1].content
 
-    logger.info({"event": "final_result", "result": result})
-    # logger.info({"event": "final_result_type", "result": type(output)})
+    logger.info({"event": "final_result", "result": output})

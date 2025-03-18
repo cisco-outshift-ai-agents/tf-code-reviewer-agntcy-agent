@@ -13,7 +13,7 @@ from typing import Any, Union
 from core.config import settings
 from fastapi import APIRouter, HTTPException, status, FastAPI, Request
 from fastapi.responses import JSONResponse
-from models.models import ErrorResponse, ReviewComments, RunCreateStateless, ReviewRequest,AIMessage,AIMessageContent,ReviewResponse
+from models.models import ErrorResponse, ReviewComments, RunCreateStateless, ReviewRequest,ReviewComment,ReviewResponse
 from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
@@ -88,28 +88,14 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
             detail=exc,
         )
 
-    # Construct structured response
-    messages = {
-        "messages": [
-            AIMessage(
-                role="assistant",
-                content=[
-                    AIMessageContent(
-                        filename=comment.filename,
-                        line_number=comment.line_number,
-                        comment=comment.comment,
-                        status=comment.status
-                    )
-                    for comment in response.issues
-                    if comment.line_number != 0
-                ],
-            )
-        ]
-    }
+    # Construct structured response from the code review comments
+    filtered_comments = [
+        comment.model_dump() for comment in response.issues if comment.line_number != 0
+    ]
 
     payload = ReviewResponse(
         agent_id=body.agent_id or "default-agent",
-        output=messages,
+        output={"messages":[{"role":"assistant","content":json.dumps(filtered_comments)}]},
         model=body.model or "gpt-4o",
         metadata={"id": body.metadata.get("id", "default-id") if body.metadata else "default-id"},
     )

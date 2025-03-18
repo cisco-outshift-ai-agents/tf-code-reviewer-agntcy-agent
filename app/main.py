@@ -58,17 +58,21 @@ def initialize_chain() -> BaseChatModel:
     Returns:
         BaseChatModel: Initialized LLM chain instance.
     """
-    USE_AZURE = all(
-        [
+    llm_provider = settings.LLM_PROVIDER.lower()
+
+    if  llm_provider == "azure":
+        # Validate Azure-specific environment variables
+        required_vars = [
             settings.AZURE_OPENAI_API_KEY,
             settings.AZURE_OPENAI_ENDPOINT,
             settings.AZURE_OPENAI_DEPLOYMENT_NAME,
             settings.AZURE_OPENAI_API_VERSION,
             settings.AZURE_OPENAI_TEMPERATURE,
         ]
-    )
 
-    if USE_AZURE:
+        if not all(required_vars):
+            raise ValueError("Missing required Azure OpenAI environment variables.")
+        
         logging.info("Using Azure OpenAI GPT-4o for Code Review.")
         # Initialize Azure OpenAI model
         llm_chain: BaseChatModel = AzureChatOpenAI(
@@ -78,14 +82,25 @@ def initialize_chain() -> BaseChatModel:
             api_version=settings.AZURE_OPENAI_API_VERSION,
             temperature=settings.AZURE_OPENAI_TEMPERATURE,
         )
-    else:
+    elif llm_provider == "openai":
+        # Validate Azure-specific environment variables
+        required_vars = [
+            settings.OPENAI_MODEL_NAME,
+            settings.OPENAI_API_KEY,
+            settings.OPENAI_TEMPERATURE
+        ]
+
+        if not all(required_vars):
+            raise ValueError("Missing required OpenAI environment variables.")
         logging.info("Using OpenAI GPT-4o for Code Review.")
         # Initialize OpenAI GPT model
         llm_chain = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
-            api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") else None,
-            temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
+            model= settings.OPENAI_MODEL_NAME,
+            api_key=settings.OPENAI_API_KEY,
+            temperature=settings.OPENAI_TEMPERATURE,
         )
+    else:
+        raise ValueError(f"Invalid LLM_PROVIDER '{llm_provider}'. Must be 'azure' or 'openai'.")
 
     return create_code_reviewer_chain(llm_chain)
 
