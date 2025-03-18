@@ -23,9 +23,6 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Code Reviewer Agent"
     DESCRIPTION: str = "Code Reviewer Agent Application"
 
-    # Mandatory LLM settings
-    LLM_PROVIDER: str = os.getenv("LLM_PROVIDER","azure") # or "openai"
-
     # if using Azure OpenAI Configuration
     AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
     AZURE_OPENAI_ENDPOINT: str = os.getenv("AZURE_OPENAI_ENDPOINT", "")

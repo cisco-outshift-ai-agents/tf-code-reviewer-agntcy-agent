@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import os
+import httpx
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
@@ -58,21 +59,17 @@ def initialize_chain() -> BaseChatModel:
     Returns:
         BaseChatModel: Initialized LLM chain instance.
     """
-    llm_provider = settings.LLM_PROVIDER.lower()
-
-    if  llm_provider == "azure":
-        # Validate Azure-specific environment variables
-        required_vars = [
+    USE_AZURE = all(
+        [
             settings.AZURE_OPENAI_API_KEY,
             settings.AZURE_OPENAI_ENDPOINT,
             settings.AZURE_OPENAI_DEPLOYMENT_NAME,
             settings.AZURE_OPENAI_API_VERSION,
             settings.AZURE_OPENAI_TEMPERATURE,
         ]
+    )
 
-        if not all(required_vars):
-            raise ValueError("Missing required Azure OpenAI environment variables.")
-        
+    if USE_AZURE:
         logging.info("Using Azure OpenAI GPT-4o for Code Review.")
         # Initialize Azure OpenAI model
         llm_chain: BaseChatModel = AzureChatOpenAI(
@@ -82,27 +79,31 @@ def initialize_chain() -> BaseChatModel:
             api_version=settings.AZURE_OPENAI_API_VERSION,
             temperature=settings.AZURE_OPENAI_TEMPERATURE,
         )
-    elif llm_provider == "openai":
-        # Validate Azure-specific environment variables
-        required_vars = [
-            settings.OPENAI_MODEL_NAME,
-            settings.OPENAI_API_KEY,
-            settings.OPENAI_TEMPERATURE
-        ]
-
-        if not all(required_vars):
-            raise ValueError("Missing required OpenAI environment variables.")
+    else:
         logging.info("Using OpenAI GPT-4o for Code Review.")
         # Initialize OpenAI GPT model
         llm_chain = ChatOpenAI(
-            model= settings.OPENAI_MODEL_NAME,
-            api_key=settings.OPENAI_API_KEY,
-            temperature=settings.OPENAI_TEMPERATURE,
+            model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
+            api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") else None,
+            temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
         )
-    else:
-        raise ValueError(f"Invalid LLM_PROVIDER '{llm_provider}'. Must be 'azure' or 'openai'.")
 
     return create_code_reviewer_chain(llm_chain)
+
+async def grpc_handler(path: str, json_payload: dict):
+    """
+    Efficiently dispatch the request internally to FastAPI route.
+    
+    This function allows gRPC handlers to forward requests to FastAPI without duplicating logic.
+    """
+    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
+        response = await client.post(path, json=json_payload)
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            # Handle errors appropriately
+            raise Exception(f"FastAPI internal error: {response.status_code}, {response.text}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -221,6 +222,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI application instance.
     """
+    global app
     app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
