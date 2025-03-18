@@ -9,6 +9,7 @@ from packaging.requirements import Requirement
 
 logging.basicConfig(level=logging.INFO)
 
+
 def get_installed_version(package_name):
     """
     Get the installed version of a package.
@@ -28,6 +29,7 @@ def get_installed_version(package_name):
         logging.error(f"Error getting installed version for '{package_name}': {e}")
         return None
 
+
 def upgrade_packages(requirements_file):
     """
     Upgrade packages listed in the requirements.txt file to their latest versions.
@@ -39,7 +41,7 @@ def upgrade_packages(requirements_file):
         None
     """
     try:
-        with open(requirements_file, 'r') as file:
+        with open(requirements_file, "r") as file:
             lines = file.readlines()
     except Exception as e:
         logging.error(f"Error reading requirements file: {e}")
@@ -52,14 +54,14 @@ def upgrade_packages(requirements_file):
 
         # Ignore comments and empty lines
         if not package_line or package_line.startswith("#"):
-            updated_lines.append(line.rstrip('\n'))
+            updated_lines.append(line.rstrip("\n"))
             continue
 
         try:
             req = Requirement(package_line)
         except Exception as e:
             logging.warning(f"Could not parse the line: '{package_line}'. Error: {e}")
-            updated_lines.append(line.rstrip('\n'))
+            updated_lines.append(line.rstrip("\n"))
             continue
 
         package_name = req.name
@@ -70,23 +72,25 @@ def upgrade_packages(requirements_file):
 
         # Skip if it's a URL or VCS requirement
         if url:
-            updated_lines.append(line.rstrip('\n'))
+            updated_lines.append(line.rstrip("\n"))
             continue
 
         # Build the package name with extras for installation
         package_with_extras = package_name
         if extras:
-            extras_str = '[' + ','.join(extras) + ']'
+            extras_str = "[" + ",".join(extras) + "]"
             package_with_extras += extras_str
 
         logging.info(f"Upgrading package '{package_with_extras}'...")
 
         try:
             # Upgrade the package to the latest version
-            subprocess.run(['pip', 'install', '--upgrade', package_with_extras], check=True)
+            subprocess.run(
+                ["pip", "install", "--upgrade", package_with_extras], check=True
+            )
         except subprocess.CalledProcessError as e:
             logging.error(f"Error upgrading package '{package_with_extras}': {e}")
-            updated_lines.append(line.rstrip('\n'))
+            updated_lines.append(line.rstrip("\n"))
             continue
 
         # Get the latest installed version
@@ -95,24 +99,29 @@ def upgrade_packages(requirements_file):
             # Reconstruct the requirement line with the new version
             updated_req_str = package_name
             if extras:
-                updated_req_str += '[' + ','.join(extras) + ']'
+                updated_req_str += "[" + ",".join(extras) + "]"
             updated_req_str += f"=={new_version}"
             if markers:
                 updated_req_str += f"; {markers}"
             updated_lines.append(updated_req_str)
         else:
-            logging.warning(f"Could not determine the installed version of '{package_name}'. Keeping the original line.")
-            updated_lines.append(line.rstrip('\n'))
+            logging.warning(
+                f"Could not determine the installed version of '{package_name}'. Keeping the original line."
+            )
+            updated_lines.append(line.rstrip("\n"))
 
     # Write the updated requirements to the file
     try:
-        with open(requirements_file, 'w') as file:
-            file.write('\n'.join(updated_lines) + '\n')
+        with open(requirements_file, "w") as file:
+            file.write("\n".join(updated_lines) + "\n")
     except Exception as e:
         logging.error(f"Error writing to requirements file: {e}")
         return
 
-    logging.info("All packages have been upgraded and requirements.txt has been updated.")
+    logging.info(
+        "All packages have been upgraded and requirements.txt has been updated."
+    )
+
 
 if __name__ == "__main__":
-    upgrade_packages('requirements.txt')
+    upgrade_packages("requirements.txt")

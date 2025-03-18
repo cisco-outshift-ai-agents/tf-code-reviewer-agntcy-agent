@@ -9,8 +9,15 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import (AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field,
-                      RootModel, conint)
+from pydantic import (
+    AnyUrl,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    conint,
+)
 
 
 class ReviewComment(BaseModel):
@@ -19,20 +26,26 @@ class ReviewComment(BaseModel):
     comment: str
     status: str
 
+
 class ReviewComments(BaseModel):
     issues: List[ReviewComment] = Field(description="List of code review issues found")
 
+
 class ReviewRequest(BaseModel):
     """Expected input format for code reviewer"""
+
     context_files: List[Dict[str, Any]]
     changes: List[Dict[str, Any]]
     static_analyzer_output: Optional[str]
 
+
 class ReviewResponse(BaseModel):
     agent_id: str = Field(..., description="The agent that generated the response")
-    output:  Dict[str, Any] = Field(..., description="List of review comments")
+    output: Dict[str, Any] = Field(..., description="List of review comments")
     model: str = Field(..., description="Model used for code review")
-    metadata: Dict[str, Any] = Field(..., description="Additional metadata related to the response")
+    metadata: Dict[str, Any] = Field(
+        ..., description="Additional metadata related to the response"
+    )
 
 
 class Agent(BaseModel):
@@ -143,6 +156,7 @@ class OnDisconnect(Enum):
 class IfNotExists(Enum):
     create = "create"
     reject = "reject"
+
 
 class RunCreateStateful(BaseModel):
     agent_id: Optional[str] = Field(

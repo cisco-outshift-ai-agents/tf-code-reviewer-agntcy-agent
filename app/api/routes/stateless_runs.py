@@ -7,17 +7,22 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from typing import Any, Union
 
 from core.config import settings
-from fastapi import APIRouter, HTTPException, status, FastAPI, Request
-from fastapi.responses import JSONResponse
-from models.models import ErrorResponse, ReviewComments, RunCreateStateless, ReviewRequest,ReviewComment,ReviewResponse
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from models.models import (
+    ErrorResponse,
+    ReviewComments,
+    ReviewRequest,
+    ReviewResponse,
+    RunCreateStateless,
+)
 from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
+
 
 def get_code_reviewer_chain(app: FastAPI):
     """
@@ -35,7 +40,6 @@ def get_code_reviewer_chain(app: FastAPI):
     return code_reviewer_chain
 
 
-
 @router.post(
     "/runs",
     response_model=ReviewResponse,
@@ -46,7 +50,9 @@ def get_code_reviewer_chain(app: FastAPI):
     },
     tags=["Stateless Runs"],
 )
-def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union[ReviewResponse, ErrorResponse]:
+def run_stateless_runs_post(
+    body: RunCreateStateless, request: Request
+) -> Union[ReviewResponse, ErrorResponse]:
     """
     Create Background Run
     """
@@ -95,9 +101,17 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
 
     payload = ReviewResponse(
         agent_id=body.agent_id or "default-agent",
-        output={"messages":[{"role":"assistant","content":json.dumps(filtered_comments)}]},
+        output={
+            "messages": [
+                {"role": "assistant", "content": json.dumps(filtered_comments)}
+            ]
+        },
         model=body.model or "gpt-4o",
-        metadata={"id": body.metadata.get("id", "default-id") if body.metadata else "default-id"},
+        metadata={
+            "id": (
+                body.metadata.get("id", "default-id") if body.metadata else "default-id"
+            )
+        },
     )
 
     logger.info(f"Returning review response: {payload.model_dump()}")

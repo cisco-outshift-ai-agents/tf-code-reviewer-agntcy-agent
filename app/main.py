@@ -5,12 +5,10 @@ from __future__ import annotations
 
 import logging
 import os
-import httpx
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from pydantic import SecretStr
-
+import httpx
 import uvicorn
 from api.routes import stateless_runs
 from core.config import settings
@@ -19,9 +17,10 @@ from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.routing import APIRoute
-from starlette.middleware.cors import CORSMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from pydantic import SecretStr
+from starlette.middleware.cors import CORSMiddleware
 from utils.chain import create_code_reviewer_chain
 
 
@@ -51,6 +50,7 @@ def load_environment_variables(env_file: str | None = None) -> None:
         logging.info(f".env file loaded from {env_path}")
     else:
         logging.warning("No .env file found. Ensure environment variables are set.")
+
 
 def initialize_chain() -> BaseChatModel:
     """
@@ -84,16 +84,21 @@ def initialize_chain() -> BaseChatModel:
         # Initialize OpenAI GPT model
         llm_chain = ChatOpenAI(
             model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
-            api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") else None,
+            api_key=(
+                SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o"))
+                if os.getenv("OPENAI_API_KEY")
+                else None
+            ),
             temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
         )
 
     return create_code_reviewer_chain(llm_chain)
 
+
 async def grpc_handler(path: str, json_payload: dict):
     """
     Efficiently dispatch the request internally to FastAPI route.
-    
+
     This function allows gRPC handlers to forward requests to FastAPI without duplicating logic.
     """
     async with httpx.AsyncClient(app=app, base_url="http://test") as client:
@@ -103,7 +108,10 @@ async def grpc_handler(path: str, json_payload: dict):
             return response.json()
         else:
             # Handle errors appropriately
-            raise Exception(f"FastAPI internal error: {response.status_code}, {response.text}")
+            raise Exception(
+                f"FastAPI internal error: {response.status_code}, {response.text}"
+            )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:

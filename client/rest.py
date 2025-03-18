@@ -6,7 +6,7 @@
 import json
 import traceback
 import uuid
-from typing import Annotated, Any, Dict, List, TypedDict,Optional
+from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
 import requests
 from dotenv import find_dotenv, load_dotenv
@@ -14,9 +14,8 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from logging_config import configure_logging
-from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 from pydantic import BaseModel
-
+from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 # Initialize logger
 logger = configure_logging()
@@ -87,6 +86,7 @@ class GraphState(TypedDict):
     """Represents the state of the graph, containing a list of messages."""
 
     messages: Annotated[List[BaseMessage], add_messages]
+
 
 # Graph node that makes a stateless request to the Remote Graph Server
 def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
@@ -203,17 +203,21 @@ def build_graph() -> Any:
 # Main execution
 if __name__ == "__main__":
 
-    CONTEXT_FILES = [{
-        "path": "example.tf",
-        "content": """
+    CONTEXT_FILES = [
+        {
+            "path": "example.tf",
+            "content": """
         resource "aws_s3_bucket" "example" {
         bucket = "my-public-bucket"
         acl    = "public-read"
-        """}]
+        """,
+        }
+    ]
 
-    CHANGES = [{
-        "file": "example.tf",
-        "content": """
+    CHANGES = [
+        {
+            "file": "example.tf",
+            "content": """
     resource "aws_security_group" "example" {
     name        = "example-sg"
     description = "Security group with open ingress"
@@ -225,8 +229,9 @@ if __name__ == "__main__":
         cidr_blocks = ["0.0.0.0/0"]
     }
     }
-    """
-    }]
+    """,
+        }
+    ]
 
     ANALYSIS_REPORTS = (
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
@@ -240,14 +245,7 @@ if __name__ == "__main__":
 
     graph = build_graph()
 
-    inputs = {
-        "messages": [
-            HumanMessage(
-                content=json.dumps(tf_input)
-            )
-        ]
-    }
-
+    inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
 
     logger.info({"event": "invoking_graph", "inputs": tf_input})
     result = graph.invoke(inputs)
