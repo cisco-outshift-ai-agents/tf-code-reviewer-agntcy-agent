@@ -211,18 +211,34 @@ class OnCompletion(Enum):
     keep = "keep"
 
 
+class Message(BaseModel):
+    """Represents an AI conversation message"""
+
+    role: str = Field(..., description="Role of the message sender (user/assistant)")
+    content: Union[str, ReviewRequest] = Field(
+        ...,
+        description="Message content, which could be a string or a structured ReviewRequest",
+    )
+
+
 class RunCreateStateless(BaseModel):
     agent_id: Optional[str] = Field(
         None,
         description="The agent ID to run. If not provided will use the default agent for this service.",
         title="Agent Id",
     )
-    input: ReviewRequest = Field(
-        None, description="The Structured input to the graph.", title="Input"
+    input: Union[ReviewRequest, Dict[str, List[Message]]] = Field(
+        ...,
+        description="Structured input for the agent (either ReviewRequest or messages)",
     )
     model: str = Field(..., description="Model used for the response (e.g., gpt-4o).")
     metadata: Optional[Dict[str, Any]] = Field(
         None, description="Metadata to assign to the run.", title="Metadata"
+    )
+    route: str = Field(
+        ...,  # This makes the field required
+        description="The API route where the request should be sent.",
+        title="Route",
     )
     config: Optional[Config] = Field(
         None, description="The configuration for the agent.", title="Config"

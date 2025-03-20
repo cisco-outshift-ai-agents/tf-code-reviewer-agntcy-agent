@@ -11,6 +11,7 @@ from typing import Annotated, Any, Dict, List, Optional, TypedDict
 import requests
 from dotenv import find_dotenv, load_dotenv
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from logging_config import configure_logging
@@ -114,12 +115,15 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
         "Content-Type": "application/json",
     }
 
+    messages = convert_to_openai_messages(state["messages"])
+
     # payload to send to autogen server at /runs endpoint
     payload = {
         "agent_id": "remote_agent",
-        "input": json.loads(query),
+        "input": {"messages": messages},
         "model": "gpt-4o",
         "metadata": {"id": str(uuid.uuid4())},
+        "route": "/api/v1/runs"
     }
 
     logger.info({"event": "payload", "query": payload})
@@ -240,7 +244,7 @@ if __name__ == "__main__":
     tf_input = {
         "context_files": CONTEXT_FILES,
         "changes": CHANGES,
-        "static_analyzer_output": ANALYSIS_REPORTS,
+        "static_analyzer_output": ANALYSIS_REPORTS
     }
 
     graph = build_graph()

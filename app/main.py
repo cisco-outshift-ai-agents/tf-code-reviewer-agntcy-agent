@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-import httpx
+import asyncio
 import uvicorn
 from api.routes import stateless_runs
 from core.config import settings
@@ -22,6 +22,27 @@ from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
 from starlette.middleware.cors import CORSMiddleware
 from utils.chain import create_code_reviewer_chain
+from agp_api.gateway.gateway_container import GatewayContainer
+from agp_api.agent.agent_container import AgentContainer
+
+
+# Initialize logger
+logger = logging.getLogger("app")
+
+
+class Config:
+    """Configuration class for AGP (Agent Gateway Protocol) client.
+    This class manages configuration settings for the AGP system, containing container
+    instances for gateway and agent management, as well as remote agent specification.
+    Attributes:
+        gateway_container (GatewayContainer): Container instance for gateway management
+        agent_container (AgentContainer): Container instance for agent management
+        remote_agent (str): Specification of remote agent, defaults to "server"
+    """
+
+    gateway_container = GatewayContainer()
+    agent_container = AgentContainer()
+    remote_agent = "server"
 
 
 def load_environment_variables(env_file: str | None = None) -> None:
@@ -93,24 +114,6 @@ def initialize_chain() -> BaseChatModel:
         )
 
     return create_code_reviewer_chain(llm_chain)
-
-
-async def grpc_handler(path: str, json_payload: dict):
-    """
-    Efficiently dispatch the request internally to FastAPI route.
-
-    This function allows gRPC handlers to forward requests to FastAPI without duplicating logic.
-    """
-    async with httpx.AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.post(path, json=json_payload)
-
-        if response.status_code == 200:
-            return response.json()
-        else:
-            # Handle errors appropriately
-            raise Exception(
-                f"FastAPI internal error: {response.status_code}, {response.text}"
-            )
 
 
 @asynccontextmanager
@@ -217,7 +220,7 @@ def add_handlers(app: FastAPI) -> None:
         )
 
 
-def create_app() -> FastAPI:
+def create_fastapi_app() -> FastAPI:
     """
     Creates and configures the FastAPI application instance.
 
@@ -230,7 +233,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI application instance.
     """
-    global app
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
@@ -256,38 +259,56 @@ def create_app() -> FastAPI:
     return app
 
 
-def main() -> None:
+app = create_fastapi_app()
+
+
+async def start_fastapi_server():
+    """Start FastAPI server."""
+    config = uvicorn.Config(app, host="0.0.0.0", port=8123, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
+
+
+async def start_agp_server() -> None:
     """
-    Entry point for running the FastAPI application.
-
-    This function performs the following:
-    - Configures logging globally.
-    - Loads environment variables from a `.env` file.
-    - Retrieves the port from environment variables (default: 8123).
-    - Starts the Uvicorn server.
-
-    Returns:
-        None
+    Initializes and starts the AGP Gateway server.
     """
-    configure_logging()  # Apply global logging settings
+    logging.info("Starting AGP application...")
 
-    logger = logging.getLogger("app")  # Default logger for main script
-    logger.info("Starting FastAPI application...")
+    load_dotenv(override=True)
 
-    # Load environment variables before starting the application
-    load_environment_variables()
-
-    # Determine port number from environment variables or use the default
-    port = int(os.getenv("PORT", "8123"))
-
-    # Start the FastAPI application using Uvicorn
-    uvicorn.run(
-        create_app(),
-        host="0.0.0.0",
-        port=port,
-        log_level="info",
+    Config.gateway_container.set_config(
+        endpoint="http://127.0.0.1:46357", insecure=True
     )
+    Config.gateway_container.set_fastapi_app(app)
+
+    _ = await Config.gateway_container.connect_with_retry(
+        agent_container=Config.agent_container, max_duration=10, initial_delay=1
+    )
+
+    try:
+        await Config.gateway_container.start_server(
+            agent_container=Config.agent_container
+        )
+    except RuntimeError as e:
+        logger.error("Runtime error: %s", e)
+    except Exception as e:
+        logger.info("Unhandled error: %s", e)
+
+
+async def main() -> None:
+    """
+    Runs both FastAPI and AGP servers concurrently.
+    """
+    configure_logging()
+
+    async with lifespan(app):
+        # Initialize the AGP Gateway connection
+        logging.info("Lifespan setup complete.")
+
+    # Run FastAPI server and AGP Gateway server concurrently
+    await asyncio.gather(start_fastapi_server(), start_agp_server())
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

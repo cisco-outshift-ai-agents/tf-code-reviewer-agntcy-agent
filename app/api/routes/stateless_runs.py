@@ -60,7 +60,25 @@ def run_stateless_runs_post(
         app = request.app
         code_reviewer_chain = get_code_reviewer_chain(app)
 
-        review_request: ReviewRequest = body.input
+        # Extract `ReviewRequest` structured input
+        agent_id = body.agent_id
+        message_id = body.metadata.get("id", "default-id")
+        messages = body.input["messages"]
+        first_message = messages[0]
+
+        review_request_data = json.loads(first_message.content)
+        # Convert to `ReviewRequest` model
+        review_request = ReviewRequest.model_validate(review_request_data)
+        # Extract fields
+        context_files = review_request.context_files
+        changes = review_request.changes
+        static_analyzer_output = review_request.static_analyzer_output
+
+        if not context_files or not changes or not static_analyzer_output:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing required fields: context_files, changes, or static_analyzer_output.",
+            )
 
         logger.info("Received valid request. Processing code review.")
 
@@ -71,12 +89,12 @@ def run_stateless_runs_post(
             {
                 "question": wrap_prompt(
                     "FILES:",
-                    f"{'\n'.join(map(str, review_request.context_files))}",
+                    f"{'\n'.join(map(str, context_files))}",
                     "",
-                    "CHANGES:" f"{review_request.changes}",
+                    "CHANGES:" f"{changes}",
                     "",
                     "STATIC_ANALYZER_OUTPUT:",
-                    f"{review_request.static_analyzer_output}",
+                    f"{static_analyzer_output}",
                 )
             }
         )
