@@ -62,7 +62,10 @@ def run_stateless_runs_post(
 
         # Extract `ReviewRequest` structured input
         agent_id = body.agent_id
+        logging.debug("Agent id: %s", agent_id)
         message_id = body.metadata.get("id", "default-id")
+        logging.debug("Message id: %s", message_id)
+
         messages = body.input["messages"]
         first_message = messages[0]
 

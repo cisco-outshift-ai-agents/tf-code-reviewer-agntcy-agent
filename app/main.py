@@ -29,7 +29,6 @@ from agp_api.agent.agent_container import AgentContainer
 # Initialize logger
 logger = logging.getLogger("app")
 
-
 class Config:
     """Configuration class for AGP (Agent Gateway Protocol) client.
     This class manages configuration settings for the AGP system, containing container
@@ -142,6 +141,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize the LLM Chain and store it in app state
     app.state.code_reviewer_chain = initialize_chain()
+
+    # Start AGP server now that app.state is initialized
+    asyncio.create_task(start_agp_server(app)) 
 
     yield  # Application runs while 'yield' is in effect.
 
@@ -259,23 +261,11 @@ def create_fastapi_app() -> FastAPI:
     return app
 
 
-app = create_fastapi_app()
-
-
-async def start_fastapi_server():
-    """Start FastAPI server."""
-    config = uvicorn.Config(app, host="0.0.0.0", port=8123, log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
-
-
-async def start_agp_server() -> None:
+async def start_agp_server(app: FastAPI) -> None:
     """
     Initializes and starts the AGP Gateway server.
     """
-    logging.info("Starting AGP application...")
-
-    load_dotenv(override=True)
+    logger.info("Starting AGP application...")
 
     Config.gateway_container.set_config(
         endpoint="http://127.0.0.1:46357", insecure=True
@@ -298,17 +288,26 @@ async def start_agp_server() -> None:
 
 async def main() -> None:
     """
-    Runs both FastAPI and AGP servers concurrently.
+    Runs both FastAPI and AGP servers.
     """
     configure_logging()
+    load_environment_variables()
 
-    async with lifespan(app):
-        # Initialize the AGP Gateway connection
-        logging.info("Lifespan setup complete.")
+    logger.info("Starting FastAPI application...")
 
-    # Run FastAPI server and AGP Gateway server concurrently
-    await asyncio.gather(start_fastapi_server(), start_agp_server())
+    # Determine port number from environment variables or use the default
+    port = int(os.getenv("PORT", "8123"))
 
+    # Start the FastAPI application using Uvicorn
+    uvicorn_config = uvicorn.Config(
+        create_fastapi_app(),
+        host="0.0.0.0",
+        port=port,
+        log_level="info",
+    )
+
+    server = uvicorn.Server(uvicorn_config)
+    await server.serve()
 
 if __name__ == "__main__":
     asyncio.run(main())
