@@ -66,10 +66,13 @@ def run_stateless_runs_post(
         message_id = body.metadata.get("id", "default-id")
         logging.debug("Message id: %s", message_id)
 
+        logger.info(f"Received request: {body.model_dump()}")
+
         messages = body.input["messages"]
         first_message = messages[0]
 
         review_request_data = json.loads(first_message.content)
+        logger.info(f"Received review request: {review_request_data}")
         # Convert to `ReviewRequest` model
         review_request = ReviewRequest.model_validate(review_request_data)
         # Extract fields
