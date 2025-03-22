@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["local", "staging", "production"] = "local"
 
     PROJECT_NAME: str = "Code Reviewer Agent"
-    DESCRIPTION: str = "Code REviewer Agent Application"
+    DESCRIPTION: str = "Code Reviewer Agent Application"
 
     # if using Azure OpenAI Configuration
     AZURE_OPENAI_API_KEY: str = os.getenv("AZURE_OPENAI_API_KEY", "")
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     # # If Using OpenAI Configuration
     OPENAI_MODEL_NAME: str = os.getenv("OPENAI_MODEL_NAME", "gpt-4o")
-    # OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
 
 

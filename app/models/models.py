@@ -9,8 +9,43 @@ from enum import Enum
 from typing import Any, Dict, List, Literal, Optional, Union
 from uuid import UUID
 
-from pydantic import (AnyUrl, AwareDatetime, BaseModel, ConfigDict, Field,
-                      RootModel, conint)
+from pydantic import (
+    AnyUrl,
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    RootModel,
+    conint,
+)
+
+
+class ReviewComment(BaseModel):
+    filename: str
+    line_number: int
+    comment: str
+    status: str
+
+
+class ReviewComments(BaseModel):
+    issues: List[ReviewComment] = Field(description="List of code review issues found")
+
+
+class ReviewRequest(BaseModel):
+    """Expected input format for code reviewer"""
+
+    context_files: List[Dict[str, Any]]
+    changes: List[Dict[str, Any]]
+    static_analyzer_output: Optional[str]
+
+
+class ReviewResponse(BaseModel):
+    agent_id: str = Field(..., description="The agent that generated the response")
+    output: Dict[str, Any] = Field(..., description="List of review comments")
+    model: str = Field(..., description="Model used for code review")
+    metadata: Dict[str, Any] = Field(
+        ..., description="Additional metadata related to the response"
+    )
 
 
 class Agent(BaseModel):
@@ -176,17 +211,34 @@ class OnCompletion(Enum):
     keep = "keep"
 
 
+class Message(BaseModel):
+    """Represents an AI conversation message"""
+
+    role: str = Field(..., description="Role of the message sender (user/assistant)")
+    content: Union[str, ReviewRequest] = Field(
+        ...,
+        description="Message content, which could be a string or a structured ReviewRequest",
+    )
+
+
 class RunCreateStateless(BaseModel):
     agent_id: Optional[str] = Field(
         None,
         description="The agent ID to run. If not provided will use the default agent for this service.",
         title="Agent Id",
     )
-    input: Optional[Union[Dict[str, Any], List, str, float, bool]] = Field(
-        None, description="The input to the graph.", title="Input"
+    input: Union[ReviewRequest, Dict[str, List[Message]]] = Field(
+        ...,
+        description="Structured input for the agent (either ReviewRequest or messages)",
     )
+    model: str = Field(..., description="Model used for the response (e.g., gpt-4o).")
     metadata: Optional[Dict[str, Any]] = Field(
         None, description="Metadata to assign to the run.", title="Metadata"
+    )
+    route: str = Field(
+        ...,  # This makes the field required
+        description="The API route where the request should be sent.",
+        title="Route",
     )
     config: Optional[Config] = Field(
         None, description="The configuration for the agent.", title="Config"
@@ -512,22 +564,3 @@ class ThreadsSearchPostResponse(RootModel[List[Thread]]):
 
 class ThreadsThreadIdHistoryGetResponse(RootModel[List[ThreadState]]):
     root: List[ThreadState]
-
-class ReviewComment(BaseModel):
-    filename: str
-    line_number: int
-    comment: str
-    status: str
-
-class ReviewComments(BaseModel):
-    issues: List[ReviewComment] = Field(description="List of code review issues found")
-
-class ReviewRequest(BaseModel):
-    """Expected input format for code reviewer"""
-    context_files: List[Dict[str, Any]]
-    changes: List[Dict[str, Any]]
-    static_analyzer_output: str
-
-class ReviewResponse(BaseModel):
-    """Expected response format from code reviewer"""
-    comments: List[ReviewComment]

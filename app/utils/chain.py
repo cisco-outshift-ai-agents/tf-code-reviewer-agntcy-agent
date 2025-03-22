@@ -10,11 +10,17 @@ from models.models import ReviewComments
 from utils.wrap_prompt import wrap_prompt
 
 
-def create_code_reviewer_chain(model: BaseChatModel) -> RunnableSerializable[dict, dict | ReviewComments]:
-    llm_with_structured_output = cast(RunnableSerializable[dict, dict | ReviewComments], model.with_structured_output(ReviewComments))
+def create_code_reviewer_chain(
+    model: BaseChatModel,
+) -> RunnableSerializable[dict, dict | ReviewComments]:
+    llm_with_structured_output = cast(
+        RunnableSerializable[dict, dict | ReviewComments],
+        model.with_structured_output(ReviewComments),
+    )
 
     # If some lines are indented more than others, dedent can't normalize it effectively.
-    system_message = wrap_prompt("""\
+    system_message = wrap_prompt(
+        """\
         You are a senior software enginner, specialized in IaC, tasked with reviewing code changes in a pull request.
         You will get a GitHub pull request which shows all the added and deleted lines, just like how GitHub shows it on their UI.
         Your task is to review the modifications and provide feedback on them, using the same language and logic as temmates would do when reviewing a PR. 
@@ -83,7 +89,8 @@ def create_code_reviewer_chain(model: BaseChatModel) -> RunnableSerializable[dic
         - Make sure the properties of the comment are aligned with the change object's properties.
         - Make sure the comment messages are actually useful for the user.
         - Make sure you checked the static analyzer outputs.
-        """)
+        """
+    )
 
     # Personalizing your behaviour with user preferences:
     # - You provide a feature for the users to customize the review experience.

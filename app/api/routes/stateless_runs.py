@@ -7,17 +7,22 @@ from __future__ import annotations
 
 import json
 import logging
-import os
 from typing import Any, Union
 
 from core.config import settings
-from fastapi import APIRouter, HTTPException, status, FastAPI, Request
-from fastapi.responses import JSONResponse
-from models.models import ErrorResponse, ReviewComments, RunCreateStateless
+from fastapi import APIRouter, FastAPI, HTTPException, Request, status
+from models.models import (
+    ErrorResponse,
+    ReviewComments,
+    ReviewRequest,
+    ReviewResponse,
+    RunCreateStateless,
+)
 from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
+
 
 def get_code_reviewer_chain(app: FastAPI):
     """
@@ -35,10 +40,9 @@ def get_code_reviewer_chain(app: FastAPI):
     return code_reviewer_chain
 
 
-
 @router.post(
     "/runs",
-    response_model=Any,
+    response_model=ReviewResponse,
     responses={
         "404": {"model": ErrorResponse},
         "409": {"model": ErrorResponse},
@@ -46,79 +50,32 @@ def get_code_reviewer_chain(app: FastAPI):
     },
     tags=["Stateless Runs"],
 )
-def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union[Any, ErrorResponse]:
+def run_stateless_runs_post(
+    body: RunCreateStateless, request: Request
+) -> Union[ReviewResponse, ErrorResponse]:
     """
     Create Background Run
     """
     try:
         app = request.app
         code_reviewer_chain = get_code_reviewer_chain(app)
-        # Convert the validated Pydantic model to a dictionary.
-        # Using model_dump() is recommended in Pydantic v2 over the deprecated dict() method.
-        payload = body.model_dump()
-        logging.debug("Decoded payload: %s", payload)
 
-        # Extract assistant_id from the payload
-        agent_id = payload.get("agent_id")
-        logging.debug(f"Agent id: {agent_id}")
+        # Extract `ReviewRequest` structured input
+        agent_id = body.agent_id
+        logging.debug("Agent id: %s", agent_id)
+        message_id = body.metadata.get("id", "default-id")
+        logging.debug("Message id: %s", message_id)
 
-        # Validate that the assistant_id is not empty.
-        if not payload.get("agent_id"):
-            msg = "agent_id is required and cannot be empty."
-            logging.error(msg)
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=msg,
-            )
-
-        # Validate the config section: ensure that config.tags is a non-empty list.
-        if (metadata := payload.get("metadata", None)) is not None:
-            message_id = metadata.get("id")
-
-        # -----------------------------------------------
-        # Extract the human input content from the payload.
-        # We expect the content to be located at: payload["input"]["messages"][0]["content"]
-        # -----------------------------------------------
-
-        # Retrieve the 'input' field and ensure it is a dictionary.
-        input_field = payload.get("input")
-        if not isinstance(input_field, dict):
-            raise ValueError("The 'input' field should be a dictionary.")
-
-        # Retrieve the 'messages' list from the 'input' dictionary.
-        messages = input_field.get("messages")
-        if not isinstance(messages, list) or not messages:
-            raise ValueError("The 'input.messages' field should be a non-empty list.")
-
-        # Access the first message in the list.
+        messages = body.input["messages"]
         first_message = messages[0]
 
-        if not isinstance(first_message, dict):
-            raise ValueError(
-                "The first element in 'input.messages' should be a dictionary."
-            )
-
-        first_message_content = first_message.get("content")
-
-        if first_message_content is None:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Missing 'content' in the first message of 'input.messages'."
-                )
-
-        # Extract the 'content' from the first message.
-        try:
-            pr_details = json.loads(first_message_content)
-        except json.JSONDecodeError as e:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail=f"{e}",
-            )
-
-        # Extract expected GitHubPRState fields
-        context_files = pr_details.get("context_files", [])
-        changes = pr_details.get("changes", [])
-        static_analyzer_output = pr_details.get("static_analyzer_output", "")
+        review_request_data = json.loads(first_message.content)
+        # Convert to `ReviewRequest` model
+        review_request = ReviewRequest.model_validate(review_request_data)
+        # Extract fields
+        context_files = review_request.context_files
+        changes = review_request.changes
+        static_analyzer_output = review_request.static_analyzer_output
 
         if not context_files or not changes or not static_analyzer_output:
             raise HTTPException(
@@ -158,31 +115,29 @@ def run_stateless_runs_post(body: RunCreateStateless, request: Request) -> Union
             detail=exc,
         )
 
-    messages = {
-        "messages": [
-            {
-                "role": "assistant",
-                "content": [
-                    comment.model_dump()
-                    for comment in response.issues
-                    if comment.line_number != 0
-                ],
-            }
-        ]
-    }
+    # Construct structured response from the code review comments
+    filtered_comments = [
+        comment.model_dump() for comment in response.issues if comment.line_number != 0
+    ]
 
-    # payload to send to autogen server at /runs endpoint
-    payload = {
-        "agent_id": agent_id,
-        "output": messages,
-        "model": "gpt-4o",
-        "metadata": {"id": message_id},
-    }
+    payload = ReviewResponse(
+        agent_id=body.agent_id or "default-agent",
+        output={
+            "messages": [
+                {"role": "assistant", "content": json.dumps(filtered_comments)}
+            ]
+        },
+        model=body.model or "gpt-4o",
+        metadata={
+            "id": (
+                body.metadata.get("id", "default-id") if body.metadata else "default-id"
+            )
+        },
+    )
 
-    logger.info(f"Payload: {payload}")
+    logger.info(f"Returning review response: {payload.model_dump()}")
 
-    # In a real application, additional processing (like starting a background task) would occur here.
-    return JSONResponse(content=payload, status_code=status.HTTP_200_OK)
+    return payload
 
 
 @router.post(

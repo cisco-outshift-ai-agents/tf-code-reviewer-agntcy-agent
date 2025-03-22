@@ -8,8 +8,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from pydantic import SecretStr
-
+import asyncio
 import uvicorn
 from api.routes import stateless_runs
 from core.config import settings
@@ -18,10 +17,31 @@ from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.routing import APIRoute
-from starlette.middleware.cors import CORSMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from pydantic import SecretStr
+from starlette.middleware.cors import CORSMiddleware
 from utils.chain import create_code_reviewer_chain
+from agp_api.gateway.gateway_container import GatewayContainer
+from agp_api.agent.agent_container import AgentContainer
+
+
+# Initialize logger
+logger = logging.getLogger("app")
+
+class Config:
+    """Configuration class for AGP (Agent Gateway Protocol) client.
+    This class manages configuration settings for the AGP system, containing container
+    instances for gateway and agent management, as well as remote agent specification.
+    Attributes:
+        gateway_container (GatewayContainer): Container instance for gateway management
+        agent_container (AgentContainer): Container instance for agent management
+        remote_agent (str): Specification of remote agent, defaults to "server"
+    """
+
+    gateway_container = GatewayContainer()
+    agent_container = AgentContainer()
+    remote_agent = "server"
 
 
 def load_environment_variables(env_file: str | None = None) -> None:
@@ -50,6 +70,7 @@ def load_environment_variables(env_file: str | None = None) -> None:
         logging.info(f".env file loaded from {env_path}")
     else:
         logging.warning("No .env file found. Ensure environment variables are set.")
+
 
 def initialize_chain() -> BaseChatModel:
     """
@@ -83,11 +104,16 @@ def initialize_chain() -> BaseChatModel:
         # Initialize OpenAI GPT model
         llm_chain = ChatOpenAI(
             model=os.getenv("OPENAI_MODEL_NAME", "gpt-4o"),
-            api_key=SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o")) if os.getenv("OPENAI_API_KEY") else None,
+            api_key=(
+                SecretStr(os.getenv("OPENAI_API_KEY", "gpt-4o"))
+                if os.getenv("OPENAI_API_KEY")
+                else None
+            ),
             temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
         )
 
     return create_code_reviewer_chain(llm_chain)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
@@ -115,6 +141,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Initialize the LLM Chain and store it in app state
     app.state.code_reviewer_chain = initialize_chain()
+
+    # Start AGP server now that app.state is initialized
+    asyncio.create_task(start_agp_server(app)) 
 
     yield  # Application runs while 'yield' is in effect.
 
@@ -193,7 +222,7 @@ def add_handlers(app: FastAPI) -> None:
         )
 
 
-def create_app() -> FastAPI:
+def create_fastapi_app() -> FastAPI:
     """
     Creates and configures the FastAPI application instance.
 
@@ -206,6 +235,7 @@ def create_app() -> FastAPI:
     Returns:
         FastAPI: The configured FastAPI application instance.
     """
+
     app = FastAPI(
         title=settings.PROJECT_NAME,
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
@@ -231,38 +261,53 @@ def create_app() -> FastAPI:
     return app
 
 
-def main() -> None:
+async def start_agp_server(app: FastAPI) -> None:
     """
-    Entry point for running the FastAPI application.
-
-    This function performs the following:
-    - Configures logging globally.
-    - Loads environment variables from a `.env` file.
-    - Retrieves the port from environment variables (default: 8123).
-    - Starts the Uvicorn server.
-
-    Returns:
-        None
+    Initializes and starts the AGP Gateway server.
     """
-    configure_logging()  # Apply global logging settings
+    logger.info("Starting AGP application...")
 
-    logger = logging.getLogger("app")  # Default logger for main script
-    logger.info("Starting FastAPI application...")
+    Config.gateway_container.set_config(
+        endpoint="http://127.0.0.1:46357", insecure=True
+    )
+    Config.gateway_container.set_fastapi_app(app)
 
-    # Load environment variables before starting the application
+    _ = await Config.gateway_container.connect_with_retry(
+        agent_container=Config.agent_container, max_duration=10, initial_delay=1
+    )
+
+    try:
+        await Config.gateway_container.start_server(
+            agent_container=Config.agent_container
+        )
+    except RuntimeError as e:
+        logger.error("Runtime error: %s", e)
+    except Exception as e:
+        logger.info("Unhandled error: %s", e)
+
+
+async def main() -> None:
+    """
+    Runs both FastAPI and AGP servers.
+    """
+    configure_logging()
     load_environment_variables()
+
+    logger.info("Starting FastAPI application...")
 
     # Determine port number from environment variables or use the default
     port = int(os.getenv("PORT", "8123"))
 
     # Start the FastAPI application using Uvicorn
-    uvicorn.run(
-        create_app(),
+    uvicorn_config = uvicorn.Config(
+        create_fastapi_app(),
         host="0.0.0.0",
         port=port,
         log_level="info",
     )
 
+    server = uvicorn.Server(uvicorn_config)
+    await server.serve()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

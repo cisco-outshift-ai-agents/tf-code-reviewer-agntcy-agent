@@ -6,14 +6,16 @@
 import json
 import traceback
 import uuid
-from typing import Annotated, Any, Dict, List, TypedDict
+from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
 import requests
 from dotenv import find_dotenv, load_dotenv
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from logging_config import configure_logging
+from pydantic import BaseModel
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 # Initialize logger
@@ -104,7 +106,7 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
 
     # Extract the latest user query
     query = state["messages"][-1].content
-    # query = state["messages"][-1].content
+
     logger.info({"event": "sending_request", "query": json.loads(query)})
 
     # Request headers
@@ -113,13 +115,18 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
         "Content-Type": "application/json",
     }
 
+    messages = convert_to_openai_messages(state["messages"])
+
     # payload to send to autogen server at /runs endpoint
     payload = {
         "agent_id": "remote_agent",
-        "input": {"messages": [HumanMessage(query).model_dump()]},
+        "input": {"messages": messages},
         "model": "gpt-4o",
         "metadata": {"id": str(uuid.uuid4())},
+        "route": "/api/v1/runs"
     }
+
+    logger.info({"event": "payload", "query": payload})
 
     # Use a session for efficiency
     session = requests.Session()
@@ -201,15 +208,20 @@ def build_graph() -> Any:
 if __name__ == "__main__":
 
     CONTEXT_FILES = [
-        """
-    resource "aws_s3_bucket" "example" {
-    bucket = "my-public-bucket"
-    acl    = "public-read"
-    }
-    """
+        {
+            "path": "example.tf",
+            "content": """
+        resource "aws_s3_bucket" "example" {
+        bucket = "my-public-bucket"
+        acl    = "public-read"
+        """,
+        }
     ]
 
-    CHANGES = """
+    CHANGES = [
+        {
+            "file": "example.tf",
+            "content": """
     resource "aws_security_group" "example" {
     name        = "example-sg"
     description = "Security group with open ingress"
@@ -221,32 +233,27 @@ if __name__ == "__main__":
         cidr_blocks = ["0.0.0.0/0"]
     }
     }
-    """
+    """,
+        }
+    ]
 
     ANALYSIS_REPORTS = (
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
-    
-    tf_input =  {
-                    "context_files": [
-                        {"path": "example.py", "content": CONTEXT_FILES}
-                    ],
-                    "changes": [{"file": "example.py", "diff": CHANGES}],
-                    "static_analyzer_output": ANALYSIS_REPORTS,
-                }
+
+    tf_input = {
+        "context_files": CONTEXT_FILES,
+        "changes": CHANGES,
+        "static_analyzer_output": ANALYSIS_REPORTS
+    }
 
     graph = build_graph()
 
-    inputs = {
-        "messages": [
-            HumanMessage(
-                content=json.dumps(tf_input)
-            )
-        ]
-    }
+    inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
 
     logger.info({"event": "invoking_graph", "inputs": tf_input})
     result = graph.invoke(inputs)
 
     output = result["messages"][-1].content
+
     logger.info({"event": "final_result", "result": output})
