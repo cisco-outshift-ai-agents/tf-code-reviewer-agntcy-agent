@@ -241,11 +241,13 @@ if __name__ == "__main__":
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
 
+
     tf_input = {
         "context_files": CONTEXT_FILES,
         "changes": CHANGES,
         "static_analyzer_output": ANALYSIS_REPORTS
     }
+
 
     graph = build_graph()
 

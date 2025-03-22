@@ -1,5 +1,6 @@
 # tf-code-reviewer-agntcy-agent
-Terraform Code Reviewer AI Agent
+[![Release](https://img.shields.io/github/v/release/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent?display_name=tag)](CHANGELOG.md)
+[![Contributor-Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 ## Overview
 
@@ -70,20 +71,30 @@ cd app
 python main.py
 ```
 
+### What happens on startup:
+
+- Environment variables are loaded.
+- A LangChain-based Terraform Code Reviewer is initialized.
+- The FastAPI rest server starts on port `8123`.
+- The AGP server is started asynchronously **after** FastAPI has initialized.
+
 ### Expected Console Output
 
 On a successful run, you should see logs in your terminal similar to the snippet below. The exact timestamps, process IDs, and file paths will vary:
 
 ```bash
 python main.py
-{"timestamp": "2025-03-07 13:50:39,724", "level": "INFO", "message": "Logging is initialized. This should appear in the log file.", "module": "logging_config", "function": "configure_logging", "line": 142, "logger": "app", "pid": 53195}
-{"timestamp": "2025-03-07 13:50:39,725", "level": "INFO", "message": "Starting FastAPI application...", "module": "main", "function": "main", "line": 203, "logger": "app", "pid": 53195}
-{"timestamp": "2025-03-07 13:50:39,725", "level": "INFO", "message": ".env file loaded from /Users/jasvdhil/Documents/Projects/subagents/tf-code-reviewer-agntcy-agent/.env", "module": "main", "function": "load_environment_variables", "line": 43, "logger": "root", "pid": 53195}
-INFO:     Started server process [53195]
+{"timestamp": "2025-03-20 20:58:12,634", "level": "INFO", "message": "Logging is initialized. This should appear in the log file.", "module": "logging_config", "function": "configure_logging", "line": 158, "logger": "app", "pid": 67660}
+{"timestamp": "2025-03-20 20:58:12,635", "level": "INFO", "message": ".env file loaded from /Users/jasvdhil/Documents/Projects/subagents/tf-code-reviewer-agntcy-agent/.env", "module": "main", "function": "load_environment_variables", "line": 70, "logger": "root", "pid": 67660}
+{"timestamp": "2025-03-20 20:58:12,635", "level": "INFO", "message": "Starting FastAPI application...", "module": "main", "function": "main", "line": 296, "logger": "app", "pid": 67660}
+INFO:     Started server process [67660]
 INFO:     Waiting for application startup.
-{"timestamp": "2025-03-07 13:50:39,738", "level": "INFO", "message": "Starting TF Code Reviewer Agent...", "module": "main", "function": "lifespan", "line": 67, "logger": "root", "pid": 53195}
+{"timestamp": "2025-03-20 20:58:12,654", "level": "INFO", "message": "Starting TF Code Reviewer Agent...", "module": "main", "function": "lifespan", "line": 137, "logger": "root", "pid": 67660}
+{"timestamp": "2025-03-20 20:58:12,654", "level": "INFO", "message": "Using Azure OpenAI GPT-4o for Code Review.", "module": "main", "function": "initialize_chain", "line": 93, "logger": "root", "pid": 67660}
+{"timestamp": "2025-03-20 20:58:12,706", "level": "INFO", "message": "Starting AGP application...", "module": "main", "function": "start_agp_server", "line": 268, "logger": "app", "pid": 67660}
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8123 (Press CTRL+C to quit)
+{"timestamp": "2025-03-20 20:58:12,755", "level": "INFO", "message": "AGP client started for agent: cisco/default/<bound method AgentContainer.get_local_agent of <agp_api.agent.agent_container.AgentContainer object at 0x107e81fd0>>", "module": "gateway_container", "function": "start_server", "line": 321, "logger": "agp_api.gateway.gateway_container", "pid": 67660}
 ```
 
 This output confirms that:
@@ -122,6 +133,14 @@ http://0.0.0.0:8123/docs
 
 (Adjust the host and port if you override them via environment variables.)
 
+
+## AGP Gateway: Remote Graph Integration
+
+This app is AGP-compliant and runs a **LangGraph agent server** behind the scenes.
+
+A remote client (LangGraph Studio or AGP-compatible client) can send structured payloads to `/api/v1/runs`.
+
+
 ## Running as a LangGraph Studio
 
 You need to install Rust: <https://www.rust-lang.org/tools/install>
@@ -141,20 +160,17 @@ Paste sample input:
    "context_files":[
       {
          "path":"example.tf",
-         "content":[
-            "\\n    resource \"aws_s3_bucket\" \"example\" {\\n    bucket = \"my-public-bucket\"\\n    acl    = \"public-read\"\\n    }\\n    "
-         ]
+         "content":"\\n        resource \"aws_s3_bucket\" \"example\" {\\n        bucket = \"my-public-bucket\"\\n        acl    = \"public-read\"\\n        "
       }
    ],
    "changes":[
       {
          "file":"example.tf",
-         "diff":"\\n    resource \"aws_security_group\" \"example\" {\\n    name        = \"example-sg\"\\n    description = \"Security group with open ingress\"\\n\\n    ingress {\\n        from_port   = 0\\n        to_port     = 0\\n        protocol    = \"-1\"\\n        cidr_blocks = [\"0.0.0.0/0\"]\\n    }\\n    }\\n    "
+         "content":"\\n    resource \"aws_security_group\" \"example\" {\\n    name        = \"example-sg\"\\n    description = \"Security group with open ingress\"\\n\\n    ingress {\\n        from_port   = 0\\n        to_port     = 0\\n        protocol    = \"-1\"\\n        cidr_blocks = [\"0.0.0.0/0\"]\\n    }\\n    }\\n    "
       }
    ],
    "static_analyzer_output":"Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
 }
-
 ```
 
 Expected Output:

@@ -16,4 +16,4 @@ langchain-openai==0.3.8
 # If you need to debug langgraph studio
 # debugpy==1.8.12
 agp-bindings==0.1.10
-agp-api==0.0.2
+agp-api==0.0.5

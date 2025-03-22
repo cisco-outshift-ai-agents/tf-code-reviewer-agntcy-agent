@@ -28,10 +28,10 @@ class Config:
         agent_container (AgentContainer): Container instance for agent management
         remote_agent (str): Specification of remote agent, defaults to "server"
     """
-
-    gateway_container = GatewayContainer()
-    agent_container = AgentContainer()
     remote_agent = "server"
+    gateway_container = GatewayContainer()
+    agent_container = AgentContainer(local_agent=remote_agent)
+    
 
 
 # Define the graph state
@@ -160,7 +160,7 @@ async def build_graph() -> Any:
     Returns:
         StateGraph: A compiled LangGraph state graph.
     """
-    await init_client_gateway_conn()
+    await init_client_gateway_conn(remote_agent=Config.remote_agent)
     builder = StateGraph(GraphState)
     builder.add_node("node_remote_agp", node_remote_agp)
     builder.add_edge(START, "node_remote_agp")

@@ -39,9 +39,10 @@ class Config:
         remote_agent (str): Specification of remote agent, defaults to "server"
     """
 
+    remote_agent = "tf_code_reviewer"
     gateway_container = GatewayContainer()
-    agent_container = AgentContainer()
-    remote_agent = "server"
+    agent_container = AgentContainer(local_agent=remote_agent)
+    
 
 
 def load_environment_variables(env_file: str | None = None) -> None:
@@ -273,7 +274,7 @@ async def start_agp_server(app: FastAPI) -> None:
     Config.gateway_container.set_fastapi_app(app)
 
     _ = await Config.gateway_container.connect_with_retry(
-        agent_container=Config.agent_container, max_duration=10, initial_delay=1
+        agent_container=Config.agent_container, max_duration=10, initial_delay=1,remote_agent=Config.remote_agent
     )
 
     try:
