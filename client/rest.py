@@ -242,37 +242,12 @@ if __name__ == "__main__":
     )
 
 
-    
+    tf_input = {
+        "context_files": CONTEXT_FILES,
+        "changes": CHANGES,
+        "static_analyzer_output": ANALYSIS_REPORTS
+    }
 
-    # tf_input = {
-    #     "context_files": CONTEXT_FILES,
-    #     "changes": CHANGES,
-    #     "static_analyzer_output": ANALYSIS_REPORTS
-    # }
-
-    tf_input={
-   "context_files":[
-      {
-         "path":"main.tf",
-         "content":"# Define the AWS provider\\nprovider \"aws\" {\\n  region = \"us-west-2\"\\n}\\n\\n# Create a VPC\\nresource \"aws_vpc\" \"main_vpc\" {\\n  cidr_block = \"\"0.0.0.0/0\"\\n\\n  tags = {\\n    Name = \"main_vpc\"\\n  }\\n}\\n\\n# Create public and private subnets\\nresource \"aws_subnet\" \"public_subnet\" {\\n  vpc_id            = aws_vpc.main_vpc.id\\n  cidr_block        = \"10.0.1.0/24\"\\n  availability_zone = \"us-west-2a\"\\n\\n  tags = {\\n    Name = \"public_subnet\"\\n  }\\n}\\n\\nresource \"aws_subnet\" \"private_subnet\" {\\n  vpc_id            = aws_vpc.main_vpc.id\\n  cidr_block        = \"10.0.2.0/24\"\\n  availability_zone = \"us-west-2a\"\\n\\n  tags = {\\n    Name = \"private_subnet\"\\n  }\\n}\\n\\n# Create an Internet Gateway\\nresource \"aws_internet_gateway\" \"igw\" {\\n  vpc_id = aws_vpc.main_vpc.id\\n\\n  tags = {\\n    Name = \"main_igw\"\\n  }\\n}\\n\\n# Create a route table for the public subnet\\nresource \"aws_route_table\" \"public_rt\" {\\n  vpc_id = aws_vpc.main_vpc.id\\n\\n  route {\\n    cidr_block = \"0.0.0.0/0\"\\n    gateway_id = aws_internet_gateway.igw.id\\n  }\\n\\n  tags = {\\n    Name = \"public_rt\"\\n  }\\n}\\n\\n# Associate the public subnet with the route table\\nresource \"aws_route_table_association\" \"public_rt_assoc\" {\\n  subnet_id      = aws_subnet.public_subnet.id\\n  route_table_id = aws_route_table.public_rt.id\\n}\\n\\n# Security group allowing SSH and HTTP access\\nresource \"aws_security_group\" \"main_sg\" {\\n  vpc_id = aws_vpc.main_vpc.id\\n\\n  ingress {\\n    from_port   = 22\\n    to_port     = 22\\n    protocol    = \"tcp\"\\n    cidr_blocks = [\"0.0.0.0/0\"]\\n  }\\n\\n  ingress {\\n    from_port   = 80\\n    to_port     = 80\\n    protocol    = \"tcp\"\\n    cidr_blocks = [\"0.0.0.0/0\"]\\n  }\\n\\n  egress {\\n    from_port   = 0\\n    to_port     = 0\\n    protocol    = \"-1\"\\n    cidr_blocks = [\"0.0.0.0/0\"]\\n  }\\n\\n  tags = {\\n    Name = \"main_sg\"\\n  }\\n}\\n\\n# Create an EC2 instance\\nresource \"aws_instance\" \"web_server\" {\\n  ami           = \"ami-0c55b159cbfafe1f0\" # Example AMI\\n  instance_type = \"t2.micro\"\\n  subnet_id     = aws_subnet.public_subnet.id\\n  security_groups = [aws_security_group.main_sg.name]\\n\\n  tags = {\\n    Name = \"web_server\"\\n  }\\n}\\n\\n# Output the public IP of the EC2 instance\\noutput \"web_server_public_ip\" {\\n  value = aws_instance.web_server.public_ip\\n}"
-      }
-   ],
-   "changes":[
-      {
-         "filename":"main.tf",
-         "start_line":8,
-         "changed_code":"-  cidr_block = \"10.0.0.0/16\"",
-         "status":"removed"
-      },
-      {
-         "filename":"main.tf",
-         "start_line":8,
-         "changed_code":"+  cidr_block = \"\"0.0.0.0/0\"",
-         "status":"added"
-      }
-   ],
-   "static_analyzer_output":""
-}
 
     graph = build_graph()
 
