@@ -122,7 +122,7 @@ This output confirms that:
 
 1. Logging is properly initialized.
 2. The server is listening on `0.0.0.0:8123`.
-3. The agent has registred itself to AGP.
+3. The agent has registered itself to AGP.
 4. Your environment variables (like `.env file loaded`) are read.
 
 
@@ -143,7 +143,11 @@ This ensures graceful degradation — the agent works in REST mode even if AGP i
 Change to `client` folder
 
 ```bash
+# REST client example
 python rest.py
+
+# AGP Client example
+python agp_client.py
 ```
 
 On a successful remote graph run you should see logs in your terminal similar to the snippet below:
