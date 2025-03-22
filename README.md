@@ -6,6 +6,14 @@
 
 This repository contains a Terraform Code Reviewer AI Agent Protocol FastAPI application. It also includes examples of JSON-based logging, CORS configuration, and route tagging.
 
+This application supports **both REST and AGP** (Agent Gateway Protocol) interfaces out of the box.
+
+> ℹ️ **Both REST and AGP servers run concurrently.** AGP is launched as a background task inside FastAPI's startup lifecycle.
+
+This project is part of the [**AGNTCY**](https://docs.agntcy.org/pages/introduction.html) initiative — an open source collective building the infrastructure for the **Internet of Agents (IoA)**: a secure, interoperable layer for agent-to-agent collaboration across organizations and platforms.
+
+
+
 ## Requirements
 
 - Python 3.12+
@@ -16,7 +24,7 @@ This repository contains a Terraform Code Reviewer AI Agent Protocol FastAPI app
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent
+   git clone https://github.com/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent
    cd tf-code-reviewer-agntcy-agent
    ```
 
@@ -35,6 +43,12 @@ Before using the agent, you need to configure **API keys** for OpenAI or Azure O
 ```sh
 touch .env
 ```
+> 📄 A sample `.env.example` is provided to help you configure your environment.  
+> Copy it to `.env` and modify values accordingly:
+> 
+> ```bash
+> cp .env.example .env
+> ```
 
 ### **2️⃣ Add API Keys**
 
@@ -61,6 +75,13 @@ AZURE_OPENAI_API_VERSION=2025-01-01-preview
 
 ## Running the Application
 
+## AGP Gateway Setup
+
+Before starting this service, make sure the **AGP Gateway** is up and running.
+
+- Default endpoint: `http://127.0.0.1:46357` on your machine.
+- This agent registers itself with the gateway using the agent ID `tf_code_reviewer`.
+
 ### Server
 
 You can run the application by executing:
@@ -76,7 +97,7 @@ python main.py
 - Environment variables are loaded.
 - A LangChain-based Terraform Code Reviewer is initialized.
 - The FastAPI rest server starts on port `8123`.
-- The AGP server is started asynchronously **after** FastAPI has initialized.
+- The AGP server is started asynchronously on port `46357` **after** FastAPI has initialized.
 
 ### Expected Console Output
 
@@ -84,24 +105,38 @@ On a successful run, you should see logs in your terminal similar to the snippet
 
 ```bash
 python main.py
-{"timestamp": "2025-03-20 20:58:12,634", "level": "INFO", "message": "Logging is initialized. This should appear in the log file.", "module": "logging_config", "function": "configure_logging", "line": 158, "logger": "app", "pid": 67660}
-{"timestamp": "2025-03-20 20:58:12,635", "level": "INFO", "message": ".env file loaded from /Users/jasvdhil/Documents/Projects/subagents/tf-code-reviewer-agntcy-agent/.env", "module": "main", "function": "load_environment_variables", "line": 70, "logger": "root", "pid": 67660}
-{"timestamp": "2025-03-20 20:58:12,635", "level": "INFO", "message": "Starting FastAPI application...", "module": "main", "function": "main", "line": 296, "logger": "app", "pid": 67660}
-INFO:     Started server process [67660]
+{"timestamp": "2025-03-22 13:02:52,551", "level": "INFO", "message": "Logging is initialized. This should appear in the log file.", "module": "logging_config", "function": "configure_logging", "line": 158, "logger": "app", "pid": 6202}
+{"timestamp": "2025-03-22 13:02:52,552", "level": "INFO", "message": ".env file loaded from /Users/jasvdhil/Documents/Projects/subagents/tf-code-reviewer-agntcy-agent/.env", "module": "main", "function": "load_environment_variables", "line": 71, "logger": "root", "pid": 6202}
+{"timestamp": "2025-03-22 13:02:52,552", "level": "INFO", "message": "Starting FastAPI application...", "module": "main", "function": "main", "line": 297, "logger": "app", "pid": 6202}
+INFO:     Started server process [6202]
 INFO:     Waiting for application startup.
-{"timestamp": "2025-03-20 20:58:12,654", "level": "INFO", "message": "Starting TF Code Reviewer Agent...", "module": "main", "function": "lifespan", "line": 137, "logger": "root", "pid": 67660}
-{"timestamp": "2025-03-20 20:58:12,654", "level": "INFO", "message": "Using Azure OpenAI GPT-4o for Code Review.", "module": "main", "function": "initialize_chain", "line": 93, "logger": "root", "pid": 67660}
-{"timestamp": "2025-03-20 20:58:12,706", "level": "INFO", "message": "Starting AGP application...", "module": "main", "function": "start_agp_server", "line": 268, "logger": "app", "pid": 67660}
+{"timestamp": "2025-03-22 13:02:52,580", "level": "INFO", "message": "Starting TF Code Reviewer Agent...", "module": "main", "function": "lifespan", "line": 138, "logger": "root", "pid": 6202}
+{"timestamp": "2025-03-22 13:02:52,580", "level": "INFO", "message": "Using Azure OpenAI GPT-4o for Code Review.", "module": "main", "function": "initialize_chain", "line": 94, "logger": "root", "pid": 6202}
+{"timestamp": "2025-03-22 13:02:52,626", "level": "INFO", "message": "Starting AGP application...", "module": "main", "function": "start_agp_server", "line": 269, "logger": "app", "pid": 6202}
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8123 (Press CTRL+C to quit)
-{"timestamp": "2025-03-20 20:58:12,755", "level": "INFO", "message": "AGP client started for agent: cisco/default/<bound method AgentContainer.get_local_agent of <agp_api.agent.agent_container.AgentContainer object at 0x107e81fd0>>", "module": "gateway_container", "function": "start_server", "line": 321, "logger": "agp_api.gateway.gateway_container", "pid": 67660}
+{"timestamp": "2025-03-22 13:02:52,637", "level": "INFO", "message": "AGP Server started for agent: cisco/default/<bound method AgentContainer.get_local_agent of <agp_api.agent.agent_container.AgentContainer object at 0x108c1e180>>", "module": "gateway_container", "function": "start_server", "line": 291, "logger": "agp_api.gateway.gateway_container", "pid": 6202}
 ```
 
 This output confirms that:
 
 1. Logging is properly initialized.
 2. The server is listening on `0.0.0.0:8123`.
-3. Your environment variables (like `.env file loaded`) are read.
+3. The agent has registred itself to AGP.
+4. Your environment variables (like `.env file loaded`) are read.
+
+
+### ⚙️ What Happens If AGP Gateway Is Not Running?
+
+If the AGP Gateway is **not** available at startup:
+
+- The agent will automatically **retry connection attempts** (with exponential backoff or configured retry logic).
+- The retry duration is currently **10 seconds** (see `max_duration` in the code).
+- If the gateway is **still unavailable** after retries:
+  - ❗ **AGP integration will be skipped**
+  - ✅ The agent will **still start the REST API server** normally.
+
+This ensures graceful degradation — the agent works in REST mode even if AGP is down or unreachable.
 
 ### Client
 
@@ -176,6 +211,55 @@ Paste sample input:
 Expected Output:
 
 ![Langgraph Studio](./docs/imgs/studio.png "Studio")
+
+
+## 🛠️ How to Generate `context_files`, `changes`, and `static_analyzer_output`
+
+The client application prepares these inputs from your GitHub Pull Request:
+
+### 🔹 `context_files`
+
+Contextual `.tf` files are collected from the same directories as your changed Terraform files. These provide broader context for better review.
+
+The logic excludes `.tfstate`, `.tfplan`, and similar sensitive files by default.
+
+### 🔹 `changes`
+
+`changes` contains the patch diff extracted from the GitHub PR. For example:
+
+```json
+{
+  "file": "example.tf",
+  "diff": "resource \"aws_security_group\" ..."
+}
+```
+
+Each change entry captures:
+- File name
+- Line numbers
+- `added` or `removed` code
+- Status (`added` / `removed`)
+
+### 🔹 `static_analyzer_output` (optional)
+
+This field contains the output of a static analyzer agent.
+
+#### Option 1 – Recommended:
+
+Use the official TF Static Analyzer Agent:
+
+👉 [https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent](https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent)
+
+Follow its README to run it independently and extract warnings or security insights. You can pass its output into this agent for improved analysis.
+
+#### Option 2 – Skip
+
+If you don't have static analyzer output, you may simply pass:
+
+```json
+"static_analyzer_output": "No issues found"
+```
+
 
 ## Roadmap
 
