@@ -291,8 +291,10 @@ async def main() -> None:
     """
     Runs both FastAPI and AGP servers.
     """
-    configure_logging()
+    
     load_environment_variables()
+
+    _ = configure_logging()
 
     logger.info("Starting FastAPI application...")
 
