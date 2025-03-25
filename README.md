@@ -15,7 +15,7 @@ By leveraging AI, the agent provides actionable insights for changes made in a P
 
 This agent can be used by developers who are building GenAI agentic applications that would benefit from insertion of a Terraform PR reviewer assistant.
 
-The **Terraform Code Analyzer AI Agent** provides value to agentic application developers by saving the effort of writing code to run standard terraform linters by providing an out-of-the-box solution that can be easily inserted into your agentic application.
+The **Terraform Code Analyzer AI Agent** provides value to agentic application developers by saving the effort of writing code to take key PR changes, input from linter, and prompt construction by providing an out-of-the-box solution that can be easily inserted into your agentic application.
 
 ## **📌 About the Project**
 This repository contains a Terraform Code Reviewer AI Agent Protocol FastAPI application. It also includes examples of JSON-based logging, CORS configuration, and route tagging.
