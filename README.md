@@ -2,7 +2,7 @@
 [![Release](https://img.shields.io/github/v/release/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent?display_name=tag)](CHANGELOG.md)
 [![Contributor-Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
-Application of OpenAI to review Terraform code in Pull Requests for application of key issues.
+Application of OpenAI to review Terraform code in Pull Requests for key issues.
 
 ## Overview
 The **Terraform Code Reviewer AI Agent** conforms to AGNTCY specs as described https://github.com/agntcy.
