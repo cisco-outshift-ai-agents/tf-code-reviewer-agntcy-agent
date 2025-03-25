@@ -1,9 +1,23 @@
-# tf-code-reviewer-agntcy-agent
+# Terraform Code Reviewer AI Agent
 [![Release](https://img.shields.io/github/v/release/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent?display_name=tag)](CHANGELOG.md)
 [![Contributor-Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
-## Overview
+Application of OpenAI to review Terraform code in Pull Requests for application of key issues.
 
+## Overview
+The **Terraform Code Reviewer AI Agent** conforms to AGNTCY specs as described https://github.com/agntcy.
+
+This langchain agent takes as input: (1) the diff patch file from the Pull Request (PR) to be reviewed, (2) the other files in the directories of the files getting modified in the PR, and (3) [optional] the output of the code analyzer (linter) agent (see https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent).
+
+All input is reviewed against a set of Terraform problem areas and best practices with a [prompt](app/utils/chain.py) sent to OpenAI.
+
+By leveraging AI, the agent provides actionable insights for changes made in a PR, and makes recommendations on how to resolve any issues identified and improve Terraform code quality, security, and reuse.
+
+This agent can be used by developers who are building GenAI agentic applications that would benefit from insertion of a Terraform PR reviewer assistant.
+
+The **Terraform Code Analyzer AI Agent** provides value to agentic application developers by saving the effort of writing code to run standard terraform linters by providing an out-of-the-box solution that can be easily inserted into your agentic application.
+
+## **📌 About the Project**
 This repository contains a Terraform Code Reviewer AI Agent Protocol FastAPI application. It also includes examples of JSON-based logging, CORS configuration, and route tagging.
 
 This application supports **both REST and AGP** (Agent Gateway Protocol) interfaces out of the box.
@@ -11,8 +25,6 @@ This application supports **both REST and AGP** (Agent Gateway Protocol) interfa
 > ℹ️ **Both REST and AGP servers run concurrently.** AGP is launched as a background task inside FastAPI's startup lifecycle.
 
 This project is part of the [**AGNTCY**](https://docs.agntcy.org/pages/introduction.html) initiative — an open source collective building the infrastructure for the **Internet of Agents (IoA)**: a secure, interoperable layer for agent-to-agent collaboration across organizations and platforms.
-
-
 
 ## Requirements
 
@@ -250,7 +262,7 @@ This field contains the output of a static analyzer agent.
 
 #### Option 1 – Recommended:
 
-Use the official TF Static Analyzer Agent:
+Use the official Terraform Static Analyzer Agent:
 
 👉 [https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent](https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent)
 
@@ -291,5 +303,7 @@ Project Link:
 
 ## Acknowledgements
 
-This template was adapted from
-[https://github.com/othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template).
+- [Langgraph](https://github.com/langchain-ai/langgraph) for the agentic platform.
+- [https://github.com/othneildrew/Best-README-Template](https://github.com/othneildrew/Best-README-Template), from which this readme was adapted
+
+For more information about our various agents, please visit the [agntcy project page](https://github.com/agntcy).
