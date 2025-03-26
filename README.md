@@ -296,10 +296,10 @@ information.
 
 ## Contact
 
-Jasvir Dhillon - [@jsd784](https://github.com/jsd784) - jasvdhil@cisco.com
+[cisco-outshift-ai-agents@cisco.com](mailto:cisco-outshift-ai-agents@cisco.com)
 
 Project Link:
-[https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent](https://github.com/cisco-ai-agents/tf-code-reviewer-agntcy-agent)
+[https://github.com/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent](https://github.com/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent)
 
 ## Acknowledgements
 
