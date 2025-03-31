@@ -26,7 +26,10 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from logging_config import configure_logging
+try:
+    from .logging_config import configure_logging
+except ImportError:
+    from logging_config import configure_logging
 
 logger = configure_logging()
 
@@ -40,7 +43,7 @@ class Config:
         agent_container (AgentContainer): Container instance for agent management
         remote_agent (str): Specification of remote agent, defaults to "server"
     """
-    remote_agent = "server"
+    remote_agent = "tf_code_reviewer"
     gateway_container = GatewayContainer()
     agent_container = AgentContainer(local_agent=remote_agent)
     
