@@ -276,6 +276,55 @@ If you don't have static analyzer output, you may simply pass:
 "static_analyzer_output": "No issues found"
 ```
 
+---
+
+## 🐳 Docker Image
+
+This agent is also published as a [Docker container image on GHCR](https://github.com/orgs/cisco-outshift-ai-agents/packages/container/package/tf-code-reviewer-agntcy-agent), making it easy to run in any containerized environment.
+
+### 📦 Image Location
+
+```
+ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent:0.0.1
+```
+
+
+---
+
+### 🚀 Run the Agent
+
+To run the agent using Docker:
+
+```bash
+docker run -p 8123:8123 --env-file .env ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent:0.0.1
+```
+
+> ⚠️ Make sure to pass in a valid `.env` file with OpenAI or Azure OpenAI credentials
+
+---
+
+### 🔧 Build & Push (for maintainers)
+
+To build the image locally:
+
+```bash
+docker build -t tf-code-reviewer-agntcy-agent .
+```
+
+Tag it:
+
+```bash
+docker tag tf-code-reviewer-agntcy-agent ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent:0.0.1
+```
+
+Push to GitHub Container Registry:
+
+```bash
+docker push ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent:0.0.1
+```
+
+---
+
 
 ## Roadmap
 
