@@ -31,7 +31,6 @@ try:
     from .logging_config import configure_logging
 except ImportError:
     from logging_config import configure_logging
-
 # Initialize logger
 logger = configure_logging()
 

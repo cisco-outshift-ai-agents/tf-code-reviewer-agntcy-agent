@@ -1,7 +1,10 @@
 import json
 from client.rest import build_graph
 from langchain_core.messages import HumanMessage
+import pytest
+from langsmith import testing as t
 
+@pytest.mark.langsmith
 def test_rest_integration():
     CONTEXT_FILES = [
         {
@@ -44,10 +47,17 @@ def test_rest_integration():
         "static_analyzer_output": ANALYSIS_REPORTS
     }
 
+    expected_output = "The security group allows unrestricted ingress"
+
+    t.log_inputs({"query":tf_input})
+    t.log_reference_outputs({"reference_outputs":expected_output})
+
     graph = build_graph()
     inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
     result = graph.invoke(inputs)
 
+    # assert result["messages"]
+    response = result["messages"][-1].content
+    t.log_outputs({"response":response})
     assert "messages" in result
-    assert result["messages"]
-    print("REST Output:", result["messages"][-1].content)
+
