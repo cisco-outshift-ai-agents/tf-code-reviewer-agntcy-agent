@@ -1,0 +1,23 @@
+version: '3'
+
+env:
+  LANGCHAIN_TRACING_V2: "true"
+
+tasks:
+  test:integration:
+    desc: Run AGP + Reviewer Agent + Pytest Integration Tests
+    cmds:
+      - echo "Starting AGP + Reviewer Agent..."
+      - docker compose -f docker-compose.yaml up -d --build
+      - echo "⏳ Waiting for services to be ready..."
+      - sleep 10
+      - echo "🧪 Running tests..."
+      - pytest --langsmith-output tests/integration
+      - echo "🧼 Shutting down containers..."
+      - docker compose down
+
+  test:local:
+      desc: Run only local Pytest tests (no Compose)
+      cmds:
+        - echo "🧪 Running Pytest tests..."
+        - pytest --langsmith-output tests/integration
