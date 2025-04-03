@@ -11,13 +11,14 @@ jobs:
 
     env:
       LANGCHAIN_TRACING_V2: true
-      LANGCHAIN_ENDPOINT: https://langsmith.cisco.com/api/v1
+      LANGCHAIN_ENDPOINT: ${{ secrets.LANGCHAIN_ENDPOINT }}
       LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
-      LANGCHAIN_PROJECT: pr-impassioned-dialogue-41
+      LANGCHAIN_PROJECT: ${{ secrets.LANGCHAIN_PROJECT }}
       AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
       AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
-      AZURE_OPENAI_DEPLOYMENT_NAME: gpt-4o
-      AZURE_OPENAI_API_VERSION: 2025-01-01-preview
+      AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+      AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+      LANGSMITH_TEST_SUITE: TF-CODE-REVIEWER-TESTS
 
     steps:
       - uses: actions/checkout@v3
