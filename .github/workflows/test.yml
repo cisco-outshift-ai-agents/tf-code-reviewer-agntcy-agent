@@ -1,0 +1,36 @@
+name: Run teraform code reviewer tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      LANGCHAIN_TRACING_V2: true
+      LANGCHAIN_ENDPOINT: https://langsmith.cisco.com/api/v1
+      LANGCHAIN_API_KEY: ${{ secrets.LANGCHAIN_API_KEY }}
+      LANGCHAIN_PROJECT: pr-impassioned-dialogue-41
+      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+      AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+      AZURE_OPENAI_DEPLOYMENT_NAME: gpt-4o
+      AZURE_OPENAI_API_VERSION: 2025-01-01-preview
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Tests with LangSmith Output
+        run: |
+          pytest --langsmith-output tests/integration
