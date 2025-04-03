@@ -13,7 +13,7 @@ tasks:
       - echo "⏳ Waiting for services to be ready..."
       - sleep 10
       - echo "🧪 Running tests..."
-      - pytest --langsmith-output tests/integration
+      - docker compose exec reviewer-agent pytest --langsmith-output tests/integration
       - echo "🧼 Shutting down containers..."
       - docker compose down
 

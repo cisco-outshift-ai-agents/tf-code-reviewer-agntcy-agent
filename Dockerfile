@@ -1,7 +1,7 @@
 # Python base image
 FROM python:3.12-slim
 
-WORKDIR /app
+WORKDIR /workspace
 
 # Install system dependencies (add Rust here)
 RUN apt-get update && apt-get install -y \
@@ -22,8 +22,12 @@ ENV PATH="/root/.cargo/bin:$PATH"
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ .
+COPY app/ ./app/
+COPY client/ ./client/
+COPY tests/ ./tests/
+
+ENV PYTHONPATH=/workspace
 
 EXPOSE 8123
 
-CMD ["python", "main.py"]
+CMD ["python", "app/main.py"]

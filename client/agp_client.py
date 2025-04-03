@@ -18,6 +18,7 @@ import asyncio
 import json
 import uuid
 from typing import Annotated, Any, Dict, List, TypedDict
+import os
 
 from agp_api.gateway.gateway_container import GatewayContainer
 from agp_api.agent.agent_container import AgentContainer
@@ -155,7 +156,7 @@ async def init_client_gateway_conn(remote_agent: str = "server") -> None:
     """
 
     Config.gateway_container.set_config(
-        endpoint="http://127.0.0.1:46357", insecure=True
+        endpoint=os.getenv("AGP_GATEWAY_URL","http://127.0.0.1:46357"), insecure=True
     )
 
     # Call connect_with_retry
