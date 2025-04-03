@@ -1,4 +1,4 @@
-name: Run teraform code reviewer tests
+name: Run Terraform Code Reviewer Tests
 
 on:
   push:
@@ -26,12 +26,18 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.12"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
+          pip install docker-compose
 
-      - name: Run Tests with LangSmith Output
+      - name: Install Task (Taskfile runner)
         run: |
-          pytest --langsmith-output tests/integration
+          curl -sSL https://taskfile.dev/install.sh | sh
+          sudo mv ./bin/task /usr/local/bin/task
+
+      - name: Run integration tests with Taskfile
+        run: |
+          task test:integration
