@@ -25,10 +25,12 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from logging_config import configure_logging
 from pydantic import BaseModel
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
-
+try:
+    from .logging_config import configure_logging
+except ImportError:
+    from logging_config import configure_logging
 # Initialize logger
 logger = configure_logging()
 

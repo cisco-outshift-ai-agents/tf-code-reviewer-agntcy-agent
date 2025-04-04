@@ -18,6 +18,7 @@ import asyncio
 import json
 import uuid
 from typing import Annotated, Any, Dict, List, TypedDict
+import os
 
 from agp_api.gateway.gateway_container import GatewayContainer
 from agp_api.agent.agent_container import AgentContainer
@@ -26,7 +27,10 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from logging_config import configure_logging
+try:
+    from .logging_config import configure_logging
+except ImportError:
+    from logging_config import configure_logging
 
 logger = configure_logging()
 
@@ -40,7 +44,7 @@ class Config:
         agent_container (AgentContainer): Container instance for agent management
         remote_agent (str): Specification of remote agent, defaults to "server"
     """
-    remote_agent = "server"
+    remote_agent = "tf_code_reviewer"
     gateway_container = GatewayContainer()
     agent_container = AgentContainer(local_agent=remote_agent)
     
@@ -152,7 +156,7 @@ async def init_client_gateway_conn(remote_agent: str = "server") -> None:
     """
 
     Config.gateway_container.set_config(
-        endpoint="http://127.0.0.1:46357", insecure=True
+        endpoint=os.getenv("AGP_GATEWAY_URL","http://127.0.0.1:46357"), insecure=True
     )
 
     # Call connect_with_retry

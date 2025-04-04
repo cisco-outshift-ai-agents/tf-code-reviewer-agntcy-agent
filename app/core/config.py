@@ -52,8 +52,12 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     OPENAI_TEMPERATURE: float = float(os.getenv("OPENAI_TEMPERATURE", 0.7))
 
+    #agp gateway
+    AGP_GATEWAY_URL: str = os.getenv("AGP_GATEWAY_URL", "http://127.0.0.1:46357")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "allow"
 
 settings = Settings()  # type: ignore

@@ -282,7 +282,7 @@ async def start_agp_server(app: FastAPI) -> None:
     logger.info("Starting AGP application...")
 
     Config.gateway_container.set_config(
-        endpoint="http://127.0.0.1:46357", insecure=True
+        endpoint=settings.AGP_GATEWAY_URL, insecure=True
     )
     Config.gateway_container.set_fastapi_app(app)
 
