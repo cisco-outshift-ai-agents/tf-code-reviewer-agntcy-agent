@@ -14,96 +14,96 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import asyncio
 import json
-import traceback
 import uuid
-from typing import Annotated, Any, Dict, List, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, TypedDict
+import os
 
-import requests
-from dotenv import find_dotenv, load_dotenv
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from agp_api.gateway.gateway_container import GatewayContainer
+from agp_api.agent.agent_container import AgentContainer
+from dotenv import load_dotenv
+from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel
-from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 try:
     from .logging_config import configure_logging
 except ImportError:
     from logging_config import configure_logging
-# Initialize logger
+
 logger = configure_logging()
 
-# URL for the Remote Graph Server /runs endpoint
-REMOTE_SERVER_URL = "http://127.0.0.1:8123/api/v1/runs"
 
-
-def load_environment_variables(env_file: str | None = None) -> None:
+class Config:
+    """Configuration class for AGP (Agent Gateway Protocol) client.
+    This class manages configuration settings for the AGP system, containing container
+    instances for gateway and agent management, as well as remote agent specification.
+    Attributes:
+        gateway_container (GatewayContainer): Container instance for gateway management
+        agent_container (AgentContainer): Container instance for agent management
+        remote_agent (str): Specification of remote agent, defaults to "server"
     """
-    Load environment variables from a .env file safely.
-
-    This function loads environment variables from a `.env` file, ensuring
-    that critical configurations are set before the application starts.
-
-    Args:
-        env_file (str | None): Path to a specific `.env` file. If None,
-                               it searches for a `.env` file automatically.
-
-    Behavior:
-    - If `env_file` is provided, it loads the specified file.
-    - If `env_file` is not provided, it attempts to locate a `.env` file in the project directory.
-    - Logs a warning if no `.env` file is found.
-
-    Returns:
-        None
-    """
-    env_path = env_file or find_dotenv()
-
-    if env_path:
-        load_dotenv(env_path, override=True)
-        logger.info(f".env file loaded from {env_path}")
-    else:
-        logger.warning("No .env file found. Ensure environment variables are set.")
-
-
-def decode_response(response_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Decodes the JSON response from the remote server and extracts relevant information.
-
-    Args:
-        response_data (Dict[str, Any]): The JSON response from the server.
-
-    Returns:
-        Dict[str, Any]: A structured dictionary containing extracted response fields.
-    """
-    try:
-        agent_id = response_data.get("agent_id", "Unknown")
-        output = response_data.get("output", {})
-        model = response_data.get("model", "Unknown")
-        metadata = response_data.get("metadata", {})
-
-        # Extract messages if present
-        messages = output.get("messages")
-
-        return {
-            "agent_id": agent_id,
-            "messages": messages,
-            "model": model,
-            "metadata": metadata,
-        }
-    except Exception as e:
-        return {"error": f"Failed to decode response: {str(e)}"}
+    remote_agent = "tf_code_reviewer"
+    gateway_container = GatewayContainer()
+    agent_container = AgentContainer(local_agent=remote_agent)
+    
 
 
 # Define the graph state
 class GraphState(TypedDict):
-    """Represents the state of the graph, containing a list of messages."""
+    """
+    Represents the state of the graph, containing a list of messages and a
+    gateway holder.
+    """
 
     messages: Annotated[List[BaseMessage], add_messages]
 
 
-# Graph node that makes a stateless request to the Remote Graph Server
-def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
+async def send_and_recv(payload: Dict[str, Any], remote_agent: str) -> Dict[str, Any]:
+    """
+    Sends a payload to a remote agent and receives a response through the gateway container.
+        payload (Dict[str, Any]): The request payload to be sent to the remote agent
+        remote_agent (str): The identifier of the remote agent to send the payload to
+    Returns:
+        Dict[str, Any]: A dictionary containing the 'messages' key with either:
+            - The last message received from the remote agent if successful
+            - An error message if the request failed, wrapped in a HumanMessage
+    Raises:
+        May raise exceptions from gateway container operations or JSON processing
+    Note:
+        The response is expected to be a JSON string that can be decoded into a dictionary
+        containing either an 'error' field (for failures) or an 'output' field with 'messages'
+    """
+
+    await Config.gateway_container.publish_messsage(
+        payload, agent_container=Config.agent_container, remote_agent=remote_agent
+    )
+    _, recv = await Config.gateway_container.gateway.receive()
+
+    response_data = json.loads(recv.decode("utf8"))
+
+    # check for errors
+    error_code = response_data.get("error")
+    if error_code is not None:
+        error_msg = {
+            "error": "AGP request failed",
+            "status_code": error_code,
+            "exception": response_data.get("message"),
+        }
+        logger.error(json.dumps(error_msg))
+        return {"messages": [HumanMessage(content=json.dumps(error_msg))]}
+
+    # decode message
+    output = response_data.get("output", {})
+    messages = output.get("messages", [])
+    logger.info(messages)
+
+    # We only store in shared memory the last message from remote to avoid duplication
+    return {"messages": [messages[-1]]}
+
+
+async def node_remote_agp(state: GraphState) -> Dict[str, Any]:
     """
     Sends a stateless request to the Remote Graph Server.
 
@@ -111,7 +111,7 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
         state (GraphState): The current graph state containing messages.
 
     Returns:
-        Dict[str, List[BaseMessage]]: Updated state containing server response or error message.
+        Command[Literal["exception_node", "end_node"]]: Command to transition to the next node.
     """
     if not state["messages"]:
         logger.error(json.dumps({"error": "GraphState contains no messages"}))
@@ -119,106 +119,78 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
 
     # Extract the latest user query
     query = state["messages"][-1].content
-
-    logger.info({"event": "sending_request", "query": json.loads(query)})
-
-    # Request headers
-    headers = {
-        "Accept": "application/json",
-        "Content-Type": "application/json",
-    }
+    logger.info(json.dumps({"event": "sending_request", "query": query}))
 
     messages = convert_to_openai_messages(state["messages"])
 
-    # payload to send to autogen server at /runs endpoint
-    payload = {
+    # payload to send to remote server at /runs endpoint
+    payload: Dict[str, Any] = {
         "agent_id": "remote_agent",
         "input": {"messages": messages},
         "model": "gpt-4o",
         "metadata": {"id": str(uuid.uuid4())},
-        "route": "/api/v1/runs"
+        # Add the route field to emulate the REST API
+        "route": "/api/v1/runs",
     }
 
-    logger.info({"event": "payload", "query": payload})
+    logger.info(json.dumps({"event": "sending_payload", "payload": payload}))
 
-    # Use a session for efficiency
-    session = requests.Session()
+    res = await send_and_recv(payload, remote_agent=Config.remote_agent)
+    return res
 
-    try:
-        response = session.post(
-            REMOTE_SERVER_URL, headers=headers, json=payload, timeout=10
-        )
 
-        # Raise exception for HTTP errors
-        response.raise_for_status()
+async def init_client_gateway_conn(remote_agent: str = "server") -> None:
+    """Initialize connection to the gateway.
+    Establishes connection to a gateway service running on localhost using retry mechanism.
+    Returns:
+        None
+    Raises:
+        ConnectionError: If unable to establish connection after retries.
+        TimeoutError: If connection attempts exceed max duration.
+    Notes:
+        - Uses default endpoint http://127.0.0.1:46357
+        - Insecure connection is enabled
+        - Maximum retry duration is 10 seconds
+        - Initial retry delay is 1 second
+        - Targets remote agent named "server"
+    """
 
-        # Parse response as JSON
-        response_data = response.json()
-        # Decode JSON response
-        decoded_response = decode_response(response_data)
+    Config.gateway_container.set_config(
+        endpoint=os.getenv("AGP_GATEWAY_URL","http://127.0.0.1:46357"), insecure=True
+    )
 
-        logger.info(decoded_response)
-
-        return {"messages": decoded_response.get("messages", [])}
-
-    except (Timeout, ConnectionError) as conn_err:
-        error_msg = {
-            "error": "Connection timeout or failure",
-            "exception": str(conn_err),
-        }
-        logger.error(json.dumps(error_msg))
-        return {"messages": [HumanMessage(content=json.dumps(error_msg))]}
-
-    except HTTPError as http_err:
-        error_msg = {
-            "error": "HTTP request failed",
-            "status_code": response.status_code,
-            "exception": str(http_err),
-        }
-        logger.error(json.dumps(error_msg))
-        return {"messages": [HumanMessage(content=json.dumps(error_msg))]}
-
-    except RequestException as req_err:
-        error_msg = {"error": "Request failed", "exception": str(req_err)}
-        logger.error(json.dumps(error_msg))
-        return {"messages": [HumanMessage(content=json.dumps(error_msg))]}
-
-    except json.JSONDecodeError as json_err:
-        error_msg = {"error": "Invalid JSON response", "exception": str(json_err)}
-        logger.error(json.dumps(error_msg))
-        return {"messages": [HumanMessage(content=json.dumps(error_msg))]}
-
-    except Exception as e:
-        error_msg = {
-            "error": "Unexpected failure",
-            "exception": str(e),
-            "stack_trace": traceback.format_exc(),
-        }
-        logger.error(json.dumps(error_msg))
-
-    finally:
-        session.close()
-
-    return {"messages": [AIMessage(content=json.dumps(error_msg))]}
+    # Call connect_with_retry
+    _ = await Config.gateway_container.connect_with_retry(
+        agent_container=Config.agent_container,
+        max_duration=10,
+        initial_delay=1,
+        remote_agent=remote_agent,
+    )
 
 
 # Build the state graph
-def build_graph() -> Any:
+async def build_graph() -> Any:
     """
     Constructs the state graph for handling requests.
 
     Returns:
         StateGraph: A compiled LangGraph state graph.
     """
+    await init_client_gateway_conn(remote_agent=Config.remote_agent)
     builder = StateGraph(GraphState)
-    builder.add_node("node_remote_request_stateless", node_remote_request_stateless)
-    builder.add_edge(START, "node_remote_request_stateless")
-    builder.add_edge("node_remote_request_stateless", END)
+    builder.add_node("node_remote_agp", node_remote_agp)
+    builder.add_edge(START, "node_remote_agp")
+    builder.add_edge("node_remote_agp", END)
     return builder.compile()
 
 
-# Main execution
-if __name__ == "__main__":
+async def main():
+    """
+    Main function to load environment variables, initialize the gateway connection,
+    build the state graph, and invoke it with sample inputs.
+    """
+    load_dotenv(override=True)
+    graph = await build_graph()
 
     CONTEXT_FILES = [
         {
@@ -254,21 +226,18 @@ if __name__ == "__main__":
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
 
-
     tf_input = {
         "context_files": CONTEXT_FILES,
         "changes": CHANGES,
-        "static_analyzer_output": ANALYSIS_REPORTS
+        "static_analyzer_output": ANALYSIS_REPORTS,
     }
 
-
-    graph = build_graph()
-
     inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
+    logger.info({"event": "invoking_graph", "inputs": inputs})
+    result = await graph.ainvoke(inputs)
+    logger.info({"event": "final_result", "result": result})
 
-    logger.info({"event": "invoking_graph", "inputs": tf_input})
-    result = graph.invoke(inputs)
 
-    output = result["messages"][-1].content
-
-    logger.info({"event": "final_result", "result": output})
+# Main execution
+if __name__ == "__main__":
+    asyncio.run(main())
