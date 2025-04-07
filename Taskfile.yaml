@@ -5,7 +5,20 @@ env:
 
 tasks:
   test:integration:
-    desc: Run AGP + Reviewer Agent + Pytest Integration Tests
+    desc: Pytest Integration Tests with langsmith tracing
+    cmds:
+      - echo "🧪 Running Integration TESTS..."
+      - docker exec tf-reviewer-agent pytest --langsmith-output tests/integration
+      
+
+  test:unit:
+    desc: Run unit tests inside the Docker container
+    cmds:
+      - echo "🧪 Running unit tests..."
+      - docker exec tf-reviewer-agent pytest tests/unit
+  
+  test:all:
+    desc: Run AGP + Reviewer Agent + Run unit and integration tests inside Docker
     cmds:
       - set -e 
       - echo "Starting AGP + Reviewer Agent..."
@@ -13,12 +26,17 @@ tasks:
       - echo "⏳ Waiting for services to be ready..."
       - sleep 10
       - echo "🧪 Running tests..."
-      - docker exec tf-reviewer-agent pytest --langsmith-output tests/integration
+      - task test:unit
+      - task test:integration
       - echo "🧼 Shutting down containers..."
       - docker compose down
+   
 
+  
   test:local:
       desc: Run only local Pytest tests (no Compose)
       cmds:
-        - echo "🧪 Running Pytest tests..."
+        - echo "🧪 Running Unit tests..."
+        - pytest tests/unit
+        - echo "🧪 Running Integration tests..."
         - pytest --langsmith-output tests/integration

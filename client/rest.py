@@ -27,10 +27,8 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
-try:
-    from .logging_config import configure_logging
-except ImportError:
-    from logging_config import configure_logging
+from logging_config import configure_logging
+    
 # Initialize logger
 logger = configure_logging()
 

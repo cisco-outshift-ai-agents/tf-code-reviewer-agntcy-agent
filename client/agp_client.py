@@ -27,10 +27,7 @@ from langchain_core.messages import BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-try:
-    from .logging_config import configure_logging
-except ImportError:
-    from logging_config import configure_logging
+from logging_config import configure_logging
 
 logger = configure_logging()
 

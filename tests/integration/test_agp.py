@@ -16,11 +16,11 @@
 
 import json
 import pytest
-from client.agp_client import build_graph
+from agp_client import build_graph
 from langchain_core.messages import HumanMessage
 from langsmith import testing as t
 
-@pytest.mark.langsmith(test_suite_name="AGP Integration Test")
+@pytest.mark.langsmith(test_suite_name="TF Code Reviewer AGP Integration Test")
 @pytest.mark.asyncio
 async def test_agp_integration():
     CONTEXT_FILES = [

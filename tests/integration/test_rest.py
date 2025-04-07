@@ -15,13 +15,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-from client.rest import build_graph
+from rest import build_graph
 from langchain_core.messages import HumanMessage
 import pytest
 from langsmith import testing as t
 import time
 
-@pytest.mark.langsmith(test_suite_name="REST Integration Test")
+@pytest.mark.langsmith(test_suite_name="TF Code Reviewer REST Integration Test")
 def test_rest_integration():
     CONTEXT_FILES = [
         {

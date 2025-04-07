@@ -34,4 +34,4 @@ jobs:
 
       - name: Run integration tests with Taskfile
         run: |
-          task test:integration
+          task test:all
