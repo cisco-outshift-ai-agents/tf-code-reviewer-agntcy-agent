@@ -11,9 +11,12 @@ on:
 
 
 jobs:
-  chart:
-    name: Helm chart
+  helm-push:
     runs-on: ubuntu-latest
+
+    permissions:
+      packages: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4 # Simplified to latest stable version
