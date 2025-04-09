@@ -18,6 +18,7 @@ import asyncio
 import json
 import uuid
 from typing import Annotated, Any, Dict, List, TypedDict
+import os
 
 from agp_api.gateway.gateway_container import GatewayContainer
 from agp_api.agent.agent_container import AgentContainer
@@ -40,7 +41,7 @@ class Config:
         agent_container (AgentContainer): Container instance for agent management
         remote_agent (str): Specification of remote agent, defaults to "server"
     """
-    remote_agent = "server"
+    remote_agent = "tf_code_reviewer"
     gateway_container = GatewayContainer()
     agent_container = AgentContainer(local_agent=remote_agent)
     
@@ -152,7 +153,7 @@ async def init_client_gateway_conn(remote_agent: str = "server") -> None:
     """
 
     Config.gateway_container.set_config(
-        endpoint="http://127.0.0.1:46357", insecure=True
+        endpoint=os.getenv("AGP_GATEWAY_URL","http://127.0.0.1:46357"), insecure=True
     )
 
     # Call connect_with_retry

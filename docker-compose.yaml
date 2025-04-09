@@ -1,0 +1,30 @@
+services:
+  agp:
+    image: ghcr.io/agntcy/agp/gw:0.3.6
+    container_name: agp-gateway
+    environment:
+      - PASSWORD=dummy_password
+    volumes:
+      - ./config:/config
+    command: ["/gateway", "--config", "/config/base/server-config.yaml"]
+    ports:
+      - "46357:46357"
+
+  reviewer-agent:
+    container_name: tf-reviewer-agent
+    build: .
+    environment:
+      - LANGSMITH_TRACING=true
+      - LANGSMITH_ENDPOINT=${LANGSMITH_ENDPOINT}
+      - LANGSMITH_API_KEY=${LANGSMITH_API_KEY}
+      - LANGSMITH_PROJECT=${LANGSMITH_PROJECT}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
+      - AZURE_OPENAI_TEMPERATURE=0.7
+      - AGP_GATEWAY_URL=http://agp-gateway:46357
+    ports:
+      - "8123:8123"
+    depends_on:
+      - agp

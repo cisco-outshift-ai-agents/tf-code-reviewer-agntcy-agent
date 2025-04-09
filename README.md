@@ -276,6 +276,93 @@ If you don't have static analyzer output, you may simply pass:
 "static_analyzer_output": "No issues found"
 ```
 
+---
+
+## Tests
+
+This repository includes both **unit** and **integration** tests to validate core logic, route handling, environment loading, and full agent interactions.
+
+Our **integration** test suite is instrumented using the [`langsmith.testing`](https://docs.smith.langchain.com/evaluation/how_to_guides/pytest) module.
+The GitHub Actions workflow includes:
+
+```yaml
+env:
+   LANGSMITH_TRACING: true
+   LANGSMITH_ENDPOINT: ${{ LANGSMITH_ENDPOINT }}
+   LANGSMITH_API_KEY: ${{ LANGSMITH_API_KEY }}
+   LANGSMITH_PROJECT: ${{ LANGSMITH_PROJECT }}
+```
+
+- Each test logs:
+  - Inputs sent to the agent
+  - LLM responses, any expected outputs and feedback.
+
+> These environment variables automatically log your tests to LangSmith when running `pytest` (see [`.github/workflows/test.yml`](.github/workflows/test.yml)).
+
+
+### 🧪 Running Tests
+
+Tests are orchestrated using the `Taskfile.yaml` for convenience:
+
+#### 🔹 Run All Tests (Unit + Integration)
+```bash
+task test:all
+```
+
+#### 🔹 Run Only Unit Tests (requires Docker Compose)
+```bash
+task test:unit
+```
+
+#### 🔹 Run Only Integration Tests (requires Docker Compose)
+```bash
+task test:integration
+```
+
+#### 🔹 Run Tests in Local Host Environment (no Docker Compose)
+```bash
+task test:local
+```
+
+> `test:local` assumes AGP and the reviewer agent are already running locally, and only executes client-side integration tests.
+
+---
+
+### 📁 Test Directory Structure
+
+```
+tests/
+├── integration/               # Full system tests using live REST/AGP endpoints
+│   ├── test_agp.py
+│   └── test_rest.py
+└── unit/                      # Tests for internal modules, routes, and utilities
+    ├── test_env_loader.py
+    ├── test_lifespan.py
+    ├── test_main.py
+    ├── test_route_utils.py
+    ├── test_stateless_runs.py
+    └── test_wrap_prompt.py
+```
+
+> 📂 Browse all tests: [`tests/`](tests/)
+
+---
+
+### ✅ Test Coverage Summary
+
+| 🧪 Category                      | 🔍 What It Tests                                                                                          | 🔗 Source |
+|----------------------------------|------------------------------------------------------------------------------------------------------------|-----------|
+| Prompt formatting (`wrap_prompt`) | Validates indentation and sectioning in prompts sent to the LLM                                           | [unit/test_wrap_prompt.py](tests/unit/test_wrap_prompt.py) |
+| Chain initialization              | Ensures correct model config (OpenAI vs Azure) based on env vars                                          | [unit/test_main.py](tests/unit/test_main.py) |
+| App startup logic (`lifespan`)   | Confirms that `code_reviewer_chain` is attached to the FastAPI app state                                  | [unit/test_lifespan.py](tests/unit/test_lifespan.py) |
+| Stateless run route              | Validates `/api/v1/runs` POST endpoint with valid and invalid payloads                                    | [unit/test_stateless_runs.py](tests/unit/test_stateless_runs.py) |
+| Route ID generator               | Tests FastAPI route ID generation via `custom_generate_unique_id()`                                       | [unit/test_route_utils.py](tests/unit/test_route_utils.py) |
+| Environment loader               | Ensures `.env` files are correctly read or skipped                                                        | [unit/test_env_loader.py](tests/unit/test_env_loader.py) |
+| AGP client end-to-end            | Sends request to agent via AGP and validates LLM output                                                   | [integration/test_agp.py](tests/integration/test_agp.py) |
+| REST client end-to-end           | Sends input to `/api/v1/runs` and verifies structured AI feedback                                         | [integration/test_rest.py](tests/integration/test_rest.py) |
+
+---
+
 
 ## Roadmap
 
