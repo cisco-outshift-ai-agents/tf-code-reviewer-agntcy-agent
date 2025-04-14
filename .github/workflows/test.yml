@@ -10,10 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      LANGSMITH_TRACING: true
-      LANGSMITH_ENDPOINT: ${{ secrets.LANGSMITH_ENDPOINT }}
-      LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
-      LANGSMITH_PROJECT: ${{ secrets.LANGSMITH_PROJECT }}
+      LANGSMITH_TEST_TRACKING: false
       AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
       AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
       AZURE_OPENAI_DEPLOYMENT_NAME: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}

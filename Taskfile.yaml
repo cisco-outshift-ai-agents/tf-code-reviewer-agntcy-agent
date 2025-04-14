@@ -1,22 +1,7 @@
 version: '3'
 
-env:
-  LANGCHAIN_TRACING_V2: "true"
-
 tasks:
-  test:integration:
-    desc: Pytest Integration Tests with langsmith tracing
-    cmds:
-      - echo "🧪 Running Integration TESTS..."
-      - docker exec tf-reviewer-agent pytest --langsmith-output tests/integration
-      
 
-  test:unit:
-    desc: Run unit tests inside the Docker container
-    cmds:
-      - echo "🧪 Running unit tests..."
-      - docker exec tf-reviewer-agent pytest tests/unit
-  
   test:all:
     desc: Run AGP + Reviewer Agent + Run unit and integration tests inside Docker
     cmds:
@@ -25,15 +10,18 @@ tasks:
       - docker compose -f docker-compose.yaml up -d --build
       - echo "⏳ Waiting for services to be ready..."
       - sleep 10
-      - echo "🧪 Running tests..."
-      - task test:unit
-      - task test:integration
+      - echo "🧪 Running Unit and Integration tests.."
+      - docker exec tf-reviewer-agent pytest tests
       - echo "🧼 Shutting down containers..."
       - docker compose down
    
-
-  
   test:local:
+      desc: Run only local Pytest tests (no Compose)
+      cmds:
+        - echo "🧪 Running Unit and Integration tests..."
+        - pytest tests/
+  
+  test:local-langsmith:
       desc: Run only local Pytest tests (no Compose)
       cmds:
         - echo "🧪 Running Unit tests..."

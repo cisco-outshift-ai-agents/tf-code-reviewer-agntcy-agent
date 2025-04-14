@@ -283,7 +283,14 @@ If you don't have static analyzer output, you may simply pass:
 This repository includes both **unit** and **integration** tests to validate core logic, route handling, environment loading, and full agent interactions.
 
 Our **integration** test suite is instrumented using the [`langsmith.testing`](https://docs.smith.langchain.com/evaluation/how_to_guides/pytest) module.
-The GitHub Actions workflow includes:
+
+By default, LangSmith tracking is **disabled** during test runs, the following environment variable is set:
+
+```bash
+LANGSMITH_TEST_TRACKING=false
+```
+
+If you'd like to enable test tracking and send logs to LangSmith, set the following environment variables:
 
 ```yaml
 env:
@@ -297,7 +304,7 @@ env:
   - Inputs sent to the agent
   - LLM responses, any expected outputs and feedback.
 
-> These environment variables automatically log your tests to LangSmith when running `pytest` (see [`.github/workflows/test.yml`](.github/workflows/test.yml)).
+> These environment variables (if set) automatically log your tests to LangSmith when running `pytest` (see [`.github/workflows/test.yml`](.github/workflows/test.yml)).
 
 
 ### 🧪 Running Tests
