@@ -4,7 +4,6 @@ metadata:
   name: {{ .Values.appName }}-configmap
   namespace: {{ .Release.Namespace }}
 data:
-  AZURE_OPENAI_API_KEY: "dummy-api-key"
-  AZURE_OPENAI_ENDPOINT: "https://dummy-resource-name.openai.azure.com"
-  AZURE_OPENAI_DEPLOYMENT_NAME: "dummy-deployment-name"
-  AZURE_OPENAI_API_VERSION: "dummy-api-version"
+  AZURE_OPENAI_ENDPOINT: "{{ .Values.azureOpenAi.endpoint }}"
+  AZURE_OPENAI_DEPLOYMENT_NAME: "{{ .Values.azureOpenAi.deploymentName }}"
+  AZURE_OPENAI_API_VERSION: "{{ .Values.azureOpenAi.apiVersion }}"

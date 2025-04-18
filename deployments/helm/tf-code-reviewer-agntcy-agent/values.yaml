@@ -7,7 +7,7 @@ appVersion: v1
 replicaCount: 1
 
 image:
-  repository: ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent:latest
+  repository: ghcr.io/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent
   tag: latest
   pullPolicy: Always
   pullSecret:
@@ -33,3 +33,8 @@ resources:
   requests:
     cpu: 200m
     memory: 500Mi
+
+azureOpenAi:
+  endpoint: ""
+  deploymentName: ""
+  apiVersion: ""
