@@ -25,6 +25,8 @@ probes:
   port: 8123
   endpoint: /v1/health
 
+agpGatewayURL: ""
+
 resources:
   enabled: false
   limits:
