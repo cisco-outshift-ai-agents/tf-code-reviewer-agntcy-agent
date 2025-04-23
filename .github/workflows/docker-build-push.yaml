@@ -18,6 +18,9 @@ jobs:
       contents: read
 
     steps:
+    - name: Pre-cleanup Docker images
+      run: docker system prune -af
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
