@@ -7,3 +7,4 @@ data:
   AZURE_OPENAI_ENDPOINT: "{{ .Values.azureOpenAi.endpoint }}"
   AZURE_OPENAI_DEPLOYMENT_NAME: "{{ .Values.azureOpenAi.deploymentName }}"
   AZURE_OPENAI_API_VERSION: "{{ .Values.azureOpenAi.apiVersion }}"
+  AGP_GATEWAY_URL: "{{ .Values.agpGatewayURL }}"
