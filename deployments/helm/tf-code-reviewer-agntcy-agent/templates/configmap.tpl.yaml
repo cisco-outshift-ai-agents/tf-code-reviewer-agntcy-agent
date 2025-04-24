@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  AZURE_OPENAI_ENDPOINT: "{{ .Values.azureOpenAi.endpoint }}"
+  AZURE_OPENAI_DEPLOYMENT_NAME: "{{ .Values.azureOpenAi.deploymentName }}"
+  AZURE_OPENAI_API_VERSION: "{{ .Values.azureOpenAi.apiVersion }}"
+  AGP_GATEWAY_URL: "{{ .Values.agpGatewayURL }}"
