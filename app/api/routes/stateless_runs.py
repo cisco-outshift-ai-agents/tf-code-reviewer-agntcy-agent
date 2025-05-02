@@ -18,18 +18,35 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Union
+from typing import Union
 
-from core.config import settings
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
-from models.models import (
+from pydantic import ValidationError
+from app.utils.wrap_prompt import wrap_prompt
+
+from agent_workflow_server.generated.models.content import Content as SrvContent
+from agent_workflow_server.generated.models.message import Message as SrvMessage
+from agent_workflow_server.generated.models.run_output import RunOutput as SrvRunOutput
+from agent_workflow_server.generated.models.run_result import RunResult as SrvRunResult
+from agent_workflow_server.generated.models.run_stateless import (
+    RunStateless as SrvRunStateless,
+)
+from agent_workflow_server.generated.models.run_status import RunStatus as SrvRunStatus
+from agent_workflow_server.generated.models.run_create_stateless import (
+    RunCreateStateless as SrvRunCreateStateless,
+)
+from agent_workflow_server.generated.models.run_wait_response_stateless import (
+    RunWaitResponseStateless as SrvRunWaitResponseStateless,
+)
+
+from app.core.config import settings
+from app.models.models import (
     ErrorResponse,
     ReviewComments,
     ReviewRequest,
     ReviewResponse,
     RunCreateStateless,
 )
-from utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
@@ -72,30 +89,38 @@ def run_stateless_runs_post(
         code_reviewer_chain = get_code_reviewer_chain(app)
 
         # Extract `ReviewRequest` structured input
-        agent_id = body.agent_id
-        logging.debug("Agent id: %s", agent_id)
-        message_id = body.metadata.get("id", "default-id")
-        logging.debug("Message id: %s", message_id)
 
-        logger.info(f"Received request: {body.model_dump()}")
+        logger.debug(f"Received request: {body.model_dump()}")
 
-        messages = body.input["messages"]
+        if isinstance(body.input, dict) and "messages" in body.input:
+            messages = body.input["messages"]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid input format: 'messages' field is missing or input is not a dictionary.",
+            )
         first_message = messages[0]
 
         review_request_data = json.loads(first_message.content)
         logger.info(f"Received review request: {review_request_data}")
         # Convert to `ReviewRequest` model
-        review_request = ReviewRequest.model_validate(review_request_data)
+        try:
+            review_request = ReviewRequest.model_validate(review_request_data)
+        except ValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Validation failed: {e}",
+            ) from e
         # Extract fields
         context_files = review_request.context_files
         changes = review_request.changes
         static_analyzer_output = review_request.static_analyzer_output
 
-        if not context_files or not changes or not static_analyzer_output:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Missing required fields: context_files, changes, or static_analyzer_output.",
-            )
+        # if not context_files or not changes or not static_analyzer_output:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        #         detail="Missing required fields: context_files, changes, or static_analyzer_output.",
+        #     )
 
         logger.info("Received valid request. Processing code review.")
 
@@ -127,7 +152,7 @@ def run_stateless_runs_post(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=exc,
-        )
+        ) from exc
 
     # Construct structured response from the code review comments
     filtered_comments = [
@@ -149,44 +174,148 @@ def run_stateless_runs_post(
         },
     )
 
-    logger.info(f"Returning review response: {payload.model_dump()}")
+    logger.debug(f"Returning review response: {payload.model_dump()}")
 
     return payload
 
 
-@router.post(
-    "/runs/stream",
-    response_model=str,
-    responses={
-        "404": {"model": ErrorResponse},
-        "409": {"model": ErrorResponse},
-        "422": {"model": ErrorResponse},
-    },
-    tags=["Stateless Runs"],
-)
-def stream_run_stateless_runs_stream_post(
-    body: RunCreateStateless,
-) -> Union[str, ErrorResponse]:
-    """
-    Create Run, Stream Output
-    """
-    pass
-
-
+# ACP Endpoint
 @router.post(
     "/runs/wait",
-    response_model=Any,
     responses={
-        "404": {"model": ErrorResponse},
-        "409": {"model": ErrorResponse},
-        "422": {"model": ErrorResponse},
+        200: {"model": SrvRunWaitResponseStateless, "description": "Success"},
+        404: {"model": str, "description": "Not Found"},
+        409: {"model": str, "description": "Conflict"},
+        422: {"model": str, "description": "Validation Error"},
     },
     tags=["Stateless Runs"],
+    summary="Create a stateless run and wait for its output",
+    response_model_by_alias=True,
 )
-def wait_run_stateless_runs_wait_post(
-    body: RunCreateStateless,
-) -> Union[Any, ErrorResponse]:
+async def create_and_wait_for_stateless_run_output(
+    body: SrvRunCreateStateless, request: Request
+) -> SrvRunWaitResponseStateless:
     """
     Create Run, Wait for Output
     """
-    pass
+    try:
+        app = request.app
+        code_reviewer_chain = get_code_reviewer_chain(app)
+
+        # Extract `ReviewRequest` structured input
+
+        logger.debug(f"Received request: {body.model_dump()}")
+
+        if isinstance(body.input, dict) and "messages" in body.input:
+            messages = body.input["messages"]
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid input format: 'messages' field is missing or input is not a dictionary.",
+            )
+        first_message = messages[0]
+
+        review_request_data = json.loads(first_message.content)
+        logger.info(f"Received review request: {review_request_data}")
+        # Convert to `ReviewRequest` model
+        try:
+            review_request = ReviewRequest.model_validate(review_request_data)
+        except ValidationError as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Validation failed: {e}",
+            ) from e
+        # Extract fields
+        context_files = review_request.context_files
+        changes = review_request.changes
+        static_analyzer_output = review_request.static_analyzer_output
+
+        # if not context_files or not changes or not static_analyzer_output:
+        #     raise HTTPException(
+        #         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        #         detail="Missing required fields: context_files, changes, or static_analyzer_output.",
+        #     )
+
+        logger.info("Received valid request. Processing code review.")
+
+        # ---- Code Reviewer Logic ----
+        # Construct LLM prompt
+
+        response: ReviewComments = code_reviewer_chain.invoke(
+            {
+                "question": wrap_prompt(
+                    "FILES:",
+                    f"{'\n'.join(map(str, context_files))}",
+                    "",
+                    "CHANGES:" f"{changes}",
+                    "",
+                    "STATIC_ANALYZER_OUTPUT:",
+                    f"{static_analyzer_output}",
+                )
+            }
+        )
+
+    except HTTPException as http_exc:
+        # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
+        logging.error("HTTP error during run processing: %s", http_exc.detail)
+        raise http_exc
+
+    except Exception as exc:
+        # Catch unexpected exceptions, log them, and return a 500 Internal Server Error.
+        logging.exception("An unexpected error occurred while processing the run.")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc,
+        ) from exc
+
+    # Construct structured response from the code review comments
+    filtered_comments = [
+        comment.model_dump() for comment in response.issues if comment.line_number != 0
+    ]
+
+    payload = ReviewResponse(
+        agent_id=body.agent_id or "default-agent",
+        output={
+            "messages": [
+                {"role": "assistant", "content": json.dumps(filtered_comments)}
+            ]
+        },
+        model=body.model or "gpt-4o",
+        metadata={
+            "id": (
+                body.metadata.get("id", "default-id") if body.metadata else "default-id"
+            )
+        },
+    )
+
+    logger.debug(f"Returning review response: {payload.model_dump()}")
+
+        # Run the static analyzer workflow on the downloaded repository.
+        workflow = StaticAnalyzerWorkflow(chain=get_llm_chain(settings))
+        result = workflow.analyze(file_path)
+        # Build WrkFlow Srv Run Output
+        message = SrvMessage(role="ai", content=SrvContent(json.dumps(result)))
+        run_result = SrvRunResult(type="result", values=result, messages=[message])
+        run_output = SrvRunOutput(run_result)
+        logger.info(result)
+    except HTTPException as http_exc:
+        logger.error(
+            "HTTP error during run processing: %s", http_exc.detail, exc_info=True
+        )
+        raise http_exc
+    except Exception as exc:
+        logger.error("Internal error during run processing: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=INTERNAL_ERROR_MESSAGE,
+        ) from exc
+    current_datetime = datetime.now(tz=timezone.utc)
+    run_stateless = SrvRunStateless(
+        run_id=str(body.metadata.get("id", "")) if body.metadata else "",
+        agent_id=body.agent_id or "",
+        created_at=current_datetime,
+        updated_at=current_datetime,
+        status=SrvRunStatus.SUCCESS,
+        creation=body,
+    )
+    return SrvRunWaitResponseStateless(run=run_stateless, output=run_output)

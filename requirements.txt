@@ -1,4 +1,4 @@
-langgraph==0.3.2
+langgraph==0.3.34
 langchain==0.3.19
 langgraph-sdk==0.1.53
 fastapi[standard]==0.115.11
@@ -11,6 +11,7 @@ pydantic==2.10.6
 pydantic-settings==2.8.1
 uvicorn==0.34.0
 requests==2.32.3
+setuptools==74.1.2
 langgraph-cli[inmem]==0.1.74
 langchain-openai==0.3.8
 # If you need to debug langgraph studio
@@ -18,3 +19,6 @@ langchain-openai==0.3.8
 agp-api==0.0.5
 pytest==8.3.5
 pytest-asyncio==0.26.0
+agntcy-acp==1.1.2
+python_json_logger==3.3.0
+

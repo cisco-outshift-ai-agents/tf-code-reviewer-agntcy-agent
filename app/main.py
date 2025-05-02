@@ -42,6 +42,7 @@ from agp_api.agent.agent_container import AgentContainer
 # Initialize logger
 logger = logging.getLogger("app")
 
+
 class Config:
     """Configuration class for AGP (Agent Gateway Protocol) client.
     This class manages configuration settings for the AGP system, containing container
@@ -55,7 +56,6 @@ class Config:
     remote_agent = "tf_code_reviewer"
     gateway_container = GatewayContainer()
     agent_container = AgentContainer(local_agent=remote_agent)
-    
 
 
 def load_environment_variables(env_file: str | None = None) -> None:
@@ -157,7 +157,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.code_reviewer_chain = initialize_chain()
 
     # Start AGP server now that app.state is initialized
-    asyncio.create_task(start_agp_server(app)) 
+    asyncio.create_task(start_agp_server(app))
 
     yield  # Application runs while 'yield' is in effect.
 
@@ -287,7 +287,10 @@ async def start_agp_server(app: FastAPI) -> None:
     Config.gateway_container.set_fastapi_app(app)
 
     _ = await Config.gateway_container.connect_with_retry(
-        agent_container=Config.agent_container, max_duration=10, initial_delay=1,remote_agent=Config.remote_agent
+        agent_container=Config.agent_container,
+        max_duration=10,
+        initial_delay=1,
+        remote_agent=Config.remote_agent,
     )
 
     try:
@@ -304,7 +307,7 @@ async def main() -> None:
     """
     Runs both FastAPI and AGP servers.
     """
-    
+
     load_environment_variables()
 
     _ = configure_logging()
@@ -324,6 +327,7 @@ async def main() -> None:
 
     server = uvicorn.Server(uvicorn_config)
     await server.serve()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

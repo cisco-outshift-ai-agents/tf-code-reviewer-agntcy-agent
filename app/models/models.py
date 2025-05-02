@@ -222,11 +222,12 @@ class OnCompletion(Enum):
     keep = "keep"
 
 
+# Duplicated definition of Message class.
 class Message(BaseModel):
     """Represents an AI conversation message"""
 
     role: str = Field(..., description="Role of the message sender (user/assistant)")
-    content: Union[str, ReviewRequest] = Field(
+    content: str = Field(
         ...,
         description="Message content, which could be a string or a structured ReviewRequest",
     )
@@ -238,7 +239,12 @@ class RunCreateStateless(BaseModel):
         description="The agent ID to run. If not provided will use the default agent for this service.",
         title="Agent Id",
     )
-    input: Union[ReviewRequest, Dict[str, List[Message]]] = Field(
+    # RP: It seems like the input is always a list of messages, so we can use that directly.
+    # input: Union[ReviewRequest, Dict[str, List[Message]]] = Field(
+    #     ...,
+    #     description="Structured input for the agent (either ReviewRequest or messages)",
+    # )
+    input: Dict[str, List[Message]] = Field(
         ...,
         description="Structured input for the agent (either ReviewRequest or messages)",
     )
@@ -449,18 +455,18 @@ class Content1(BaseModel):
     metadata: Optional[Dict[str, Any]] = None
 
 
-class Message(BaseModel):
-    model_config = ConfigDict(
-        extra="allow",
-    )
-    role: str = Field(..., description="The role of the message.", title="Role")
-    content: Union[str, List[Union[Content, Content1]]] = Field(
-        ..., description="The content of the message.", title="Content"
-    )
-    id: Optional[str] = Field(None, description="The ID of the message.", title="Id")
-    metadata: Optional[Dict[str, Any]] = Field(
-        None, description="The metadata of the message.", title="Metadata"
-    )
+# class Message(BaseModel):
+#     model_config = ConfigDict(
+#         extra="allow",
+#     )
+#     role: str = Field(..., description="The role of the message.", title="Role")
+#     content: Union[str, List[Union[Content, Content1]]] = Field(
+#         ..., description="The content of the message.", title="Content"
+#     )
+#     id: Optional[str] = Field(None, description="The ID of the message.", title="Id")
+#     metadata: Optional[Dict[str, Any]] = Field(
+#         None, description="The metadata of the message.", title="Metadata"
+#     )
 
 
 class SearchItemsResponse(BaseModel):
