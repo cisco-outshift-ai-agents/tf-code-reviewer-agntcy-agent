@@ -38,6 +38,8 @@ from langgraph.graph import END, START, StateGraph
 
 from dotenv import find_dotenv, load_dotenv
 from client.utils.logging_config import configure_logging
+from app.models.models import ReviewRequest
+
 
 logger = configure_logging(log_filename=__file__.replace(".py", ".log"))
 
@@ -61,8 +63,8 @@ def fetch_github_environment_variables() -> Dict[str, str | None]:
 class GraphState(TypedDict):
     """Represents the state of the graph, containing the file_path."""
 
-    github_details: Dict[str, str]
-    static_analyzer_output: str
+    review_request: Dict[str, str]
+    code_reviewer_output: str
 
 
 def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
@@ -75,8 +77,8 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The updated state of the graph after processing the request.
     """
-    if "github_details" not in state or not state["github_details"]:
-        error_msg = "GraphState is missing 'github_details' key"
+    if "review_request" not in state or not state["review_request"]:
+        error_msg = "GraphState is missing 'review_request' key"
         logger.error(json.dumps({"error": error_msg}))
         return {"error": error_msg}
 
@@ -152,16 +154,53 @@ def main():
 
     graph = build_graph()
 
-    github_details = fetch_github_environment_variables()
-    graph_input = {"github_details": github_details}
-    logger.info({"event": "invoking_graph", "input": graph_input})
+    CONTEXT_FILES = [
+        {
+            "path": "example.tf",
+            "content": """
+        resource "aws_s3_bucket" "example" {
+        bucket = "my-public-bucket"
+        acl    = "public-read"
+        """,
+        }
+    ]
 
-    result = graph.invoke(graph_input)
+    CHANGES = [
+        {
+            "file": "example.tf",
+            "content": """
+    resource "aws_security_group" "example" {
+    name        = "example-sg"
+    description = "Security group with open ingress"
 
-    logger.error(
+    ingress {
+        from_port   = 0
+        to_port     = 0
+        protocol    = "-1"
+        cidr_blocks = ["0.0.0.0/0"]
+    }
+    }
+    """,
+        }
+    ]
+
+    ANALYSIS_REPORTS = (
+        "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
+    )
+
+    review_request = ReviewRequest(
+        context_files=CONTEXT_FILES,
+        changes=CHANGES,
+        static_analyzer_output=ANALYSIS_REPORTS,
+    )
+    logger.info({"event": "invoking_graph", "input": review_request.model_dump_json()})
+
+    result = graph.invoke({"review_request": review_request.model_dump()})
+
+    logger.info(
         {
             "event": "final_result",
-            "result": result.get("static_analyzer_output", result),
+            "result": result.get("code_reviewer_output", result),
         }
     )
 
