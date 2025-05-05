@@ -22,31 +22,27 @@ from typing import Union
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
 from pydantic import ValidationError
-from app.utils.wrap_prompt import wrap_prompt
 
-from agent_workflow_server.generated.models.content import Content as SrvContent
-from agent_workflow_server.generated.models.message import Message as SrvMessage
-from agent_workflow_server.generated.models.run_output import RunOutput as SrvRunOutput
-from agent_workflow_server.generated.models.run_result import RunResult as SrvRunResult
-from agent_workflow_server.generated.models.run_stateless import (
-    RunStateless as SrvRunStateless,
-)
-from agent_workflow_server.generated.models.run_status import RunStatus as SrvRunStatus
-from agent_workflow_server.generated.models.run_create_stateless import (
-    RunCreateStateless as SrvRunCreateStateless,
-)
-from agent_workflow_server.generated.models.run_wait_response_stateless import (
-    RunWaitResponseStateless as SrvRunWaitResponseStateless,
-)
-
+from agent_workflow_server.generated.models.content import \
+    Content as SrvContent
+from agent_workflow_server.generated.models.message import \
+    Message as SrvMessage
+from agent_workflow_server.generated.models.run_create_stateless import \
+    RunCreateStateless as SrvRunCreateStateless
+from agent_workflow_server.generated.models.run_output import \
+    RunOutput as SrvRunOutput
+from agent_workflow_server.generated.models.run_result import \
+    RunResult as SrvRunResult
+from agent_workflow_server.generated.models.run_stateless import \
+    RunStateless as SrvRunStateless
+from agent_workflow_server.generated.models.run_status import \
+    RunStatus as SrvRunStatus
+from agent_workflow_server.generated.models.run_wait_response_stateless import \
+    RunWaitResponseStateless as SrvRunWaitResponseStateless
 from app.core.config import settings
-from app.models.models import (
-    ErrorResponse,
-    ReviewComments,
-    ReviewRequest,
-    ReviewResponse,
-    RunCreateStateless,
-)
+from app.models.models import (ErrorResponse, ReviewComments, ReviewRequest,
+                               ReviewResponse, RunCreateStateless)
+from app.utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
@@ -290,6 +286,7 @@ async def create_and_wait_for_stateless_run_output(
 
     logger.debug(f"Returning review response: {payload.model_dump()}")
 
+    try:
         # Run the static analyzer workflow on the downloaded repository.
         workflow = StaticAnalyzerWorkflow(chain=get_llm_chain(settings))
         result = workflow.analyze(file_path)

@@ -16,16 +16,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-import asyncio
 import uvicorn
-from api.routes import stateless_runs
-from core.config import settings
-from core.logging_config import configure_logging
+from agp_api.agent.agent_container import AgentContainer
+from agp_api.gateway.gateway_container import GatewayContainer
 from dotenv import find_dotenv, load_dotenv
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -34,10 +33,11 @@ from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
 from starlette.middleware.cors import CORSMiddleware
-from utils.chain import create_code_reviewer_chain
-from agp_api.gateway.gateway_container import GatewayContainer
-from agp_api.agent.agent_container import AgentContainer
+from app.utils.chain import create_code_reviewer_chain
 
+from app.api.routes.stateless_runs import router as stateless_runs_router
+from app.core.config import settings
+from app.core.logging_config import configure_logging
 
 # Initialize logger
 logger = logging.getLogger("app")
@@ -260,7 +260,7 @@ def create_fastapi_app() -> FastAPI:
     )
 
     add_handlers(app)
-    app.include_router(stateless_runs.router, prefix=settings.API_V1_STR)
+    app.include_router(stateless_runs_router, prefix=settings.API_V1_STR)
 
     # Set all CORS enabled origins
     app.add_middleware(
