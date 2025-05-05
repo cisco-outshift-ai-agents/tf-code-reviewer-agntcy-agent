@@ -77,7 +77,10 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: The updated state of the graph after processing the request.
     """
-    if "review_request" not in state or not state["review_request"]:
+
+    review_request_key = "review_request"
+
+    if review_request_key not in state or not state[review_request_key]:
         error_msg = "GraphState is missing 'review_request' key"
         logger.error(json.dumps({"error": error_msg}))
         return {"error": error_msg}
@@ -87,7 +90,7 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
     client_config = ApiClientConfiguration.fromEnvPrefix("ACP_TF_CODE_REVIEWER_")
     run_create = RunCreateStateless(
         agent_id=remote_agent_id,
-        input={"github_details": state["github_details"]},
+        input={review_request_key: state[review_request_key]},
         metadata={"id": str(uuid.uuid4())},
     )
 
@@ -101,7 +104,7 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
             if isinstance(actual_output, RunResult):
                 run_result: RunResult = actual_output
                 sao = (
-                    run_result.values.get("static_analyzer_output", "")
+                    run_result.values.get("code_reviewer_output", "")
                     if run_result.values
                     else ""
                 )
