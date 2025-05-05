@@ -266,7 +266,7 @@ if __name__ == "__main__":
 
     graph = build_graph()
 
-    inputs = {"messages": [HumanMessage(content=json.dumps(review_request))]}
+    inputs = {"messages": [HumanMessage(content=review_request.model_dump_json())]}
 
     logger.info({"event": "invoking_graph", "inputs": review_request})
     result = graph.invoke(inputs)
