@@ -19,33 +19,39 @@ from __future__ import annotations
 import json
 import logging
 from typing import Union
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
 from pydantic import ValidationError
 
-from agent_workflow_server.generated.models.content import \
-    Content as SrvContent
-from agent_workflow_server.generated.models.message import \
-    Message as SrvMessage
-from agent_workflow_server.generated.models.run_create_stateless import \
-    RunCreateStateless as SrvRunCreateStateless
-from agent_workflow_server.generated.models.run_output import \
-    RunOutput as SrvRunOutput
-from agent_workflow_server.generated.models.run_result import \
-    RunResult as SrvRunResult
-from agent_workflow_server.generated.models.run_stateless import \
-    RunStateless as SrvRunStateless
-from agent_workflow_server.generated.models.run_status import \
-    RunStatus as SrvRunStatus
-from agent_workflow_server.generated.models.run_wait_response_stateless import \
-    RunWaitResponseStateless as SrvRunWaitResponseStateless
+from agent_workflow_server.generated.models.content import Content as SrvContent
+from agent_workflow_server.generated.models.message import Message as SrvMessage
+from agent_workflow_server.generated.models.run_create_stateless import (
+    RunCreateStateless as SrvRunCreateStateless,
+)
+from agent_workflow_server.generated.models.run_output import RunOutput as SrvRunOutput
+from agent_workflow_server.generated.models.run_result import RunResult as SrvRunResult
+from agent_workflow_server.generated.models.run_stateless import (
+    RunStateless as SrvRunStateless,
+)
+from agent_workflow_server.generated.models.run_status import RunStatus as SrvRunStatus
+from agent_workflow_server.generated.models.run_wait_response_stateless import (
+    RunWaitResponseStateless as SrvRunWaitResponseStateless,
+)
 from app.core.config import settings
-from app.models.models import (ErrorResponse, ReviewComments, ReviewRequest,
-                               ReviewResponse, RunCreateStateless)
+from app.models.models import (
+    ErrorResponse,
+    ReviewComments,
+    ReviewRequest,
+    ReviewResponse,
+    RunCreateStateless,
+)
 from app.utils.wrap_prompt import wrap_prompt
 
 router = APIRouter(tags=["Stateless Runs"])
 logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
+# Error messages
+INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 
 
 def get_code_reviewer_chain(app: FastAPI):
@@ -276,7 +282,7 @@ async def create_and_wait_for_stateless_run_output(
                 {"role": "assistant", "content": json.dumps(filtered_comments)}
             ]
         },
-        model=body.model or "gpt-4o",
+        model="gpt-4o",
         metadata={
             "id": (
                 body.metadata.get("id", "default-id") if body.metadata else "default-id"
@@ -287,14 +293,13 @@ async def create_and_wait_for_stateless_run_output(
     logger.debug(f"Returning review response: {payload.model_dump()}")
 
     try:
-        # Run the static analyzer workflow on the downloaded repository.
-        workflow = StaticAnalyzerWorkflow(chain=get_llm_chain(settings))
-        result = workflow.analyze(file_path)
         # Build WrkFlow Srv Run Output
-        message = SrvMessage(role="ai", content=SrvContent(json.dumps(result)))
-        run_result = SrvRunResult(type="result", values=result, messages=[message])
+        message = SrvMessage(
+            role="ai", content=SrvContent(json.dumps(filtered_comments))
+        )
+        run_result = SrvRunResult(type="result", messages=[message])
         run_output = SrvRunOutput(run_result)
-        logger.info(result)
+        logger.info(run_output.model_dump_json(indent=2))
     except HTTPException as http_exc:
         logger.error(
             "HTTP error during run processing: %s", http_exc.detail, exc_info=True
