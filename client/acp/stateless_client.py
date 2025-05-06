@@ -29,12 +29,14 @@ import json
 import os
 import traceback
 import uuid
-from typing import Any, Dict, TypedDict
+from typing import Annotated, Any, Dict, List, TypedDict
 
 from agntcy_acp import ACPClient, ApiClientConfiguration
 from agntcy_acp.acp_v0.sync_client.api_client import ApiClient
 from agntcy_acp.acp_v0.models import RunCreateStateless, RunError, RunResult
-from langgraph.graph import END, START, StateGraph
+from langgraph.graph import END, START, StateGraph, add_messages
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langchain_core.messages.utils import convert_to_openai_messages
 
 from dotenv import find_dotenv, load_dotenv
 from client.utils.logging_config import configure_logging
@@ -63,7 +65,7 @@ def fetch_github_environment_variables() -> Dict[str, str | None]:
 class GraphState(TypedDict):
     """Represents the state of the graph, containing the file_path."""
 
-    review_request: Dict[str, str]
+    messages: Annotated[List[BaseMessage], add_messages]
     code_reviewer_output: str
 
 
@@ -78,19 +80,22 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
         Dict[str, Any]: The updated state of the graph after processing the request.
     """
 
-    review_request_key = "review_request"
+    messages_key = "messages"
 
-    if review_request_key not in state or not state[review_request_key]:
+    if messages_key not in state or not state[messages_key]:
         error_msg = "GraphState is missing 'review_request' key"
         logger.error(json.dumps({"error": error_msg}))
         return {"error": error_msg}
+
+    # Convert from proprietary langchain to OpenAI message format
+    messages = convert_to_openai_messages(state["messages"])
 
     # ACP
     remote_agent_id = "remote_agent"
     client_config = ApiClientConfiguration.fromEnvPrefix("ACP_TF_CODE_REVIEWER_")
     run_create = RunCreateStateless(
         agent_id=remote_agent_id,
-        input={review_request_key: state[review_request_key]},
+        input={"messages": messages, "route": "/api/v1/runs/wait"},
         metadata={"id": str(uuid.uuid4())},
     )
 
@@ -103,32 +108,29 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
             actual_output = run_output.output.actual_instance
             if isinstance(actual_output, RunResult):
                 run_result: RunResult = actual_output
-                sao = (
-                    run_result.values.get("code_reviewer_output", "")
-                    if run_result.values
-                    else ""
+                cro = (
+                    run_result.messages[-1].content.actual_instance if run_result.messages else ""
                 )
-            elif isinstance(actual_output, RunError):
+                return {"static_analyzer_output": cro, "messages": [HumanMessage(content=str(cro))]}
+            if isinstance(actual_output, RunError):
                 run_error: RunError = actual_output
                 raise Warning(f"Run Failed: {run_error}")
-            else:
-                raise ValueError(
-                    f"ACP Server returned a unsupported response: {run_output}"
-                )
-            return {"static_analyzer_output": sao}
+ 
+            raise ValueError(
+                f"ACP Server returned a unsupported response: {run_output}"
+            )
 
         except Exception as e:
-            error_msg = "Unexpected failure"
-            logger.error(
-                json.dumps(
-                    {
-                        "error": error_msg,
-                        "exception": str(e),
-                        "stack_trace": traceback.format_exc(),
-                    }
-                )
+            error_msg = json.dumps(
+                {
+                    "error": "Unexpected failure",
+                    "exception": str(e),
+                    "stack_trace": traceback.format_exc(),
+                }
             )
-            return {"error": error_msg}
+
+            logger.error(error_msg)
+            return {"messages": [AIMessage(content=error_msg)]}
 
 
 def build_graph() -> Any:
@@ -198,7 +200,9 @@ def main():
     )
     logger.info({"event": "invoking_graph", "input": review_request.model_dump_json()})
 
-    result = graph.invoke({"review_request": review_request.model_dump()})
+    inputs = {"messages": [HumanMessage(content=review_request.model_dump_json())]}
+
+    result = graph.invoke(inputs)
 
     logger.info(
         {
