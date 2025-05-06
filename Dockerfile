@@ -27,6 +27,7 @@ COPY setup.py .
 COPY app/ ./app/
 COPY client/ ./client/
 COPY tests/ ./tests/
+COPY agent_workflow_server ./agent_workflow_server/
 COPY pytest.ini .
 
 RUN pip install -e .

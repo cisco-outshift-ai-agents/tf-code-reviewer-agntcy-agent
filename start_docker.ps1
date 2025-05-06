@@ -1,5 +1,5 @@
 param(
-    [string]$ImageName = "tfcodeanalyzer"
+    [string]$ImageName = "tf-code-reviewer"
 )
 
 # Specify path to your .env file
