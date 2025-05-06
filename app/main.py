@@ -315,12 +315,13 @@ async def main() -> None:
     logger.info("Starting FastAPI application...")
 
     # Determine port number from environment variables or use the default
-    port = int(os.getenv("PORT", "8123"))
+    port = int(os.getenv("TF_CODE_REVIEWER_PORT", "8123"))
+    host = os.getenv("TF_CODE_REVIEWER_HOST", "0.0.0.0")
 
     # Start the FastAPI application using Uvicorn
     uvicorn_config = uvicorn.Config(
         create_fastapi_app(),
-        host="0.0.0.0",
+        host=host,
         port=port,
         log_level="info",
     )
