@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-from main import initialize_chain
+from app.main import initialize_chain
 
 def test_initialize_chain_openai(monkeypatch):
     """

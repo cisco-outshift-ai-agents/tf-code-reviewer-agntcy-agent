@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from utils.wrap_prompt import wrap_prompt
+from app.utils.wrap_prompt import wrap_prompt
 
 def test_wrap_prompt():
     """
