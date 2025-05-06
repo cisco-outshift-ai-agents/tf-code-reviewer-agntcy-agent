@@ -217,7 +217,7 @@ async def create_and_wait_for_stateless_run_output(
             )
         first_message = messages[0]
 
-        review_request_data = json.loads(first_message.content)
+        review_request_data = json.loads(first_message["content"])
         logger.info(f"Received review request: {review_request_data}")
         # Convert to `ReviewRequest` model
         try:
@@ -231,12 +231,6 @@ async def create_and_wait_for_stateless_run_output(
         context_files = review_request.context_files
         changes = review_request.changes
         static_analyzer_output = review_request.static_analyzer_output
-
-        # if not context_files or not changes or not static_analyzer_output:
-        #     raise HTTPException(
-        #         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        #         detail="Missing required fields: context_files, changes, or static_analyzer_output.",
-        #     )
 
         logger.info("Received valid request. Processing code review.")
 

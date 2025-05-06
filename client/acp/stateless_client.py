@@ -111,7 +111,7 @@ def node_remote_request_stateless(state: Dict[str, Any]) -> Dict[str, Any]:
                 cro = (
                     run_result.messages[-1].content.actual_instance if run_result.messages else ""
                 )
-                return {"static_analyzer_output": cro, "messages": [HumanMessage(content=str(cro))]}
+                return {"static_analyzer_output": cro, "messages": [AIMessage(content=str(cro))]}
             if isinstance(actual_output, RunError):
                 run_error: RunError = actual_output
                 raise Warning(f"Run Failed: {run_error}")
