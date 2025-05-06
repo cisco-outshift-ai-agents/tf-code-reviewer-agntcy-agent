@@ -22,10 +22,14 @@ ENV PATH="/root/.cargo/bin:$PATH"
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy setup.py and install project in editable mode
+COPY setup.py .
 COPY app/ ./app/
 COPY client/ ./client/
 COPY tests/ ./tests/
 COPY pytest.ini .
+
+RUN pip install -e .
 
 ENV PYTHONPATH=/workspace
 
