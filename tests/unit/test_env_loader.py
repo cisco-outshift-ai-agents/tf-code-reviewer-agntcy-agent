@@ -16,7 +16,7 @@
 
 import os
 import tempfile
-from main import load_environment_variables
+from app.main import load_environment_variables
 
 
 def test_load_env_from_custom_file(monkeypatch):

@@ -19,8 +19,8 @@ from typing import cast
 from langchain_core.language_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
-from models.models import ReviewComments
-from utils.wrap_prompt import wrap_prompt
+from app.models.models import ReviewComments
+from app.utils.wrap_prompt import wrap_prompt
 
 
 def create_code_reviewer_chain(

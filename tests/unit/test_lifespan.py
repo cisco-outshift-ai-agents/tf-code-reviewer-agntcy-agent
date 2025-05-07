@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import pytest
 from fastapi import FastAPI
-from main import lifespan
+from app.main import lifespan
 
 
 @pytest.mark.asyncio
@@ -25,7 +25,7 @@ async def test_lifespan_initializes_chain(monkeypatch):
     """
     app = FastAPI()
 
-    monkeypatch.setattr("main.initialize_chain", lambda: "mock_chain")
+    monkeypatch.setattr("app.main.initialize_chain", lambda: "mock_chain")
 
     async with lifespan(app):
         assert app.state.code_reviewer_chain == "mock_chain"

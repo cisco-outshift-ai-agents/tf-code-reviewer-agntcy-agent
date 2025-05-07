@@ -1,10 +1,12 @@
 # Terraform Code Reviewer AI Agent
+
 [![Release](https://img.shields.io/github/v/release/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent?display_name=tag)](CHANGELOG.md)
 [![Contributor-Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-fbab2c.svg)](CODE_OF_CONDUCT.md)
 
 Application of OpenAI to review Terraform code in Pull Requests for key issues.
 
 ## Overview
+
 The **Terraform Code Reviewer AI Agent** conforms to AGNTCY specs as described https://github.com/agntcy.
 
 This langchain agent takes as input: (1) the diff patch file from the Pull Request (PR) to be reviewed, (2) the other files in the directories of the files getting modified in the PR, and (3) [optional] the output of the code analyzer (linter) agent (see https://github.com/cisco-outshift-ai-agents/tf-code-analyzer-agntcy-agent).
@@ -18,6 +20,7 @@ This agent can be used by developers who are building GenAI agentic applications
 The **Terraform Code Analyzer AI Agent** delivers value to agentic application developers by saving the effort of writing code to take diff files from a pull request, linter feedback, and then construct an effective code review prompt by providing an out-of-the-box solution that can be easily inserted into agentic applications via its supported APIs.
 
 ## **📌 About the Project**
+
 This repository contains a **Terraform Code Reviewer AI Agent** Protocol FastAPI application. It also includes examples of JSON-based logging, CORS configuration, and route tagging.
 
 This application supports **both REST and AGP** (Agent Gateway Protocol) interfaces out of the box.
@@ -44,6 +47,12 @@ This project is part of the [**AGNTCY**](https://docs.agntcy.org/pages/introduct
 
    ```bash
    pip install -r requirements.txt
+   ```
+
+3. Install Code Reviewer in Editable Mode
+
+   ```bash
+   pip install -e .
    ```
 
 ## Environment Setup
@@ -312,21 +321,25 @@ env:
 Tests are orchestrated using the `Taskfile.yaml` for convenience:
 
 #### 🔹 Run All Tests (Unit + Integration)
+
 ```bash
 task test:all
 ```
 
 #### 🔹 Run Only Unit Tests (requires Docker Compose)
+
 ```bash
 task test:unit
 ```
 
 #### 🔹 Run Only Integration Tests (requires Docker Compose)
+
 ```bash
 task test:integration
 ```
 
 #### 🔹 Run Tests in Local Host Environment (no Docker Compose)
+
 ```bash
 task test:local
 ```

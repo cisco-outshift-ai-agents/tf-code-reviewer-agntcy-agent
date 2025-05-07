@@ -17,7 +17,7 @@
 import json
 import traceback
 import uuid
-from typing import Annotated, Any, Dict, List, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, TypedDict
 
 import requests
 from dotenv import find_dotenv, load_dotenv
@@ -25,12 +25,12 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.messages.utils import convert_to_openai_messages
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
-from pydantic import BaseModel
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
-from logging_config import configure_logging
-    
+from app.models.models import ReviewRequest
+from client.utils.logging_config import configure_logging
+
 # Initialize logger
-logger = configure_logging()
+logger = configure_logging(log_filename=__file__.replace(".py", ".log"))
 
 # URL for the Remote Graph Server /runs endpoint
 REMOTE_SERVER_URL = "http://127.0.0.1:8123/api/v1/runs"
@@ -134,7 +134,7 @@ def node_remote_request_stateless(state: GraphState) -> Dict[str, Any]:
         "input": {"messages": messages},
         "model": "gpt-4o",
         "metadata": {"id": str(uuid.uuid4())},
-        "route": "/api/v1/runs"
+        "route": "/api/v1/runs",
     }
 
     logger.info({"event": "payload", "query": payload})
@@ -252,19 +252,23 @@ if __name__ == "__main__":
         "Security Warning: The security group allows unrestricted ingress (0.0.0.0/0)."
     )
 
+    review_request = ReviewRequest(
+        context_files=CONTEXT_FILES,
+        changes=CHANGES,
+        static_analyzer_output=ANALYSIS_REPORTS,
+    )
 
-    tf_input = {
-        "context_files": CONTEXT_FILES,
-        "changes": CHANGES,
-        "static_analyzer_output": ANALYSIS_REPORTS
-    }
-
+    # tf_input = {
+    #     "context_files": CONTEXT_FILES,
+    #     "changes": CHANGES,
+    #     "static_analyzer_output": ANALYSIS_REPORTS,
+    # }
 
     graph = build_graph()
 
-    inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
+    inputs = {"messages": [HumanMessage(content=review_request.model_dump_json())]}
 
-    logger.info({"event": "invoking_graph", "inputs": tf_input})
+    logger.info({"event": "invoking_graph", "inputs": review_request})
     result = graph.invoke(inputs)
 
     output = result["messages"][-1].content

@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 from fastapi.routing import APIRoute
-from main import custom_generate_unique_id
+from app.main import custom_generate_unique_id
 
 
 def test_custom_generate_unique_id_with_tags():

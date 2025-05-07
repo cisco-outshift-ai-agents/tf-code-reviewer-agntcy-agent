@@ -15,7 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 from fastapi.testclient import TestClient
-from main import create_fastapi_app
+from app.main import create_fastapi_app
 
 
 def test_run_stateless_runs_valid(monkeypatch):
