@@ -168,7 +168,7 @@ def run_stateless_runs_post(
         codereview = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
                                      static_analyzer_output=[static_analyzer_output])
 
-        response: ReviewComments = code_reviewer_chain(get_model_dump_with_metadata(codereview)).invoke({})
+        response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(codereview))
         print(response)
 
     except HTTPException as http_exc:
