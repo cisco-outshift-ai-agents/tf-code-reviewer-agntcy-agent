@@ -55,9 +55,9 @@ INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 
 
 class codeReviewInput(BaseModel):
-    files: Optional[list[str]] = Field(default_factory=list,
+    files: Optional[list[dict]] = Field(default_factory=list,
                                                description="""receive all the Terraform files from the user in the "FILES" list..""")
-    changes: list[str] = Field(
+    changes: list[dict] = Field(
         description="""List of code changes across Terraform files. The changes have the following format:
             - filename: the name of the file where the change was done
             - start_line: the line number where the change was added
@@ -166,7 +166,7 @@ def run_stateless_runs_post(
         # Construct LLM prompt
 
         codereview = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                     static_analyzer_output=static_analyzer_output)
+                                     static_analyzer_output=[static_analyzer_output])
 
         response: ReviewComments = code_reviewer_chain(get_model_dump_with_metadata(codereview)).invoke({})
 
