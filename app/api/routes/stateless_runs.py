@@ -69,6 +69,20 @@ def get_code_reviewer_chain(app: FastAPI):
         raise HTTPException(status_code=500, detail="CodeReviewer not initialized")
     return code_reviewer_chain
 
+@staticmethod
+def get_model_dump_with_metadata(model_instance):
+    data = model_instance.model_dump()
+    metadata = model_instance.model_fields
+
+    result = {}
+    for field_name, value in data.items():
+        description = metadata[field_name].description
+        result[field_name] = {
+            "value": value,
+            "description": description
+        }
+    return result
+
 
 @router.post(
     "/runs",
@@ -114,9 +128,9 @@ def run_stateless_runs_post(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        context_files = review_request.context_files
-        changes = review_request.changes
-        static_analyzer_output = review_request.static_analyzer_output
+        # context_files = review_request.context_files
+        # changes = review_request.changes
+        # static_analyzer_output = review_request.static_analyzer_output
 
         # if not context_files or not changes or not static_analyzer_output:
         #     raise HTTPException(
@@ -129,19 +143,11 @@ def run_stateless_runs_post(
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
 
-        response: ReviewComments = code_reviewer_chain.invoke(
-            {
-                "question": wrap_prompt(
-                    "FILES:",
-                    f"{'\n'.join(map(str, context_files))}",
-                    "",
-                    "CHANGES:" f"{changes}",
-                    "",
-                    "STATIC_ANALYZER_OUTPUT:",
-                    f"{static_analyzer_output}",
-                )
-            }
-        )
+        static_analyzer_response = review_request.static_analyzer_output
+        codereview = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
+                                     static_analyzer_output=static_analyzer_response)
+
+        response: ReviewComments = code_reviewer_chain(get_model_dump_with_metadata(codereview)).invoke({})
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
