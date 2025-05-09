@@ -169,7 +169,6 @@ def run_stateless_runs_post(
                                      static_analyzer_output=[static_analyzer_output])
 
         response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(codereview))
-        print(response)
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
@@ -256,13 +255,15 @@ async def create_and_wait_for_stateless_run_output(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        input_dict = {"files": review_request.context_files, "changes": review_request.changes, "static_analyzer_output": review_request.static_analyzer_output}
 
         logger.info("Received valid request. Processing code review.")
 
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
-        response: ReviewComments = code_reviewer_chain(input_dict).invoke({})
+        codereview = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
+                                     static_analyzer_output=[review_request.static_analyzer_output])
+
+        response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(codereview))
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
         logging.error("HTTP error during run processing: %s", http_exc.detail)
