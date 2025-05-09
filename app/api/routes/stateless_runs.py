@@ -69,6 +69,7 @@ def get_code_reviewer_chain(app: FastAPI):
         raise HTTPException(status_code=500, detail="CodeReviewer not initialized")
     return code_reviewer_chain
 
+
 @staticmethod
 def get_model_dump_with_metadata(model_instance):
     data = model_instance.model_dump()
@@ -95,7 +96,7 @@ def get_model_dump_with_metadata(model_instance):
     tags=["Stateless Runs"],
 )
 def run_stateless_runs_post(
-    body: RunCreateStateless, request: Request
+        body: RunCreateStateless, request: Request
 ) -> Union[ReviewResponse, ErrorResponse]:
     """
     Create Background Run
@@ -201,7 +202,7 @@ def run_stateless_runs_post(
     response_model_by_alias=True,
 )
 async def create_and_wait_for_stateless_run_output(
-    body: SrvRunCreateStateless, request: Request
+        body: SrvRunCreateStateless, request: Request
 ) -> SrvRunWaitResponseStateless:
     """
     Create Run, Wait for Output
@@ -234,29 +235,13 @@ async def create_and_wait_for_stateless_run_output(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        context_files = review_request.context_files
-        changes = review_request.changes
-        static_analyzer_output = review_request.static_analyzer_output
+        input_dict = {"files": review_request.context_files, "changes": review_request.changes, "static_analyzer_output": review_request.static_analyzer_output}
 
         logger.info("Received valid request. Processing code review.")
 
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
-
-        response: ReviewComments = code_reviewer_chain.invoke(
-            {
-                "question": wrap_prompt(
-                    "FILES:",
-                    f"{'\n'.join(map(str, context_files))}",
-                    "",
-                    "CHANGES:" f"{changes}",
-                    "",
-                    "STATIC_ANALYZER_OUTPUT:",
-                    f"{static_analyzer_output}",
-                )
-            }
-        )
-
+        response: ReviewComments = code_reviewer_chain(input_dict).invoke({})
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
         logging.error("HTTP error during run processing: %s", http_exc.detail)
