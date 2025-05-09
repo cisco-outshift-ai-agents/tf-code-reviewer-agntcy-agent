@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Union
+from typing import Union, Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel, Field
 
 from agent_workflow_server.generated.models.content import Content as SrvContent
 from agent_workflow_server.generated.models.message import Message as SrvMessage
@@ -54,6 +54,27 @@ logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
 INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 
 
+class codeReviewInput(BaseModel):
+    files: Optional[list[str]] = Field(default_factory=list,
+                                               description="""receive all the Terraform files from the user in the "FILES" list..""")
+    changes: list[str] = Field(
+        description="""List of code changes across Terraform files. The changes have the following format:
+            - filename: the name of the file where the change was done
+            - start_line: the line number where the change was added
+            - changed_code: the code that was removed/added after the start line, there's a + or - sign at the beginning of every change line, it indicates if it was added or removed, ignore this sign.
+            - status: indicates if the changed_code was added/removed
+            - Changes with "removed" status mean that the code in that change was deleted from the codebase, it's not part of the code anymore.
+            - Changes with "added" status mean that the code in that change was added the codebase.
+            - Always focus on whether a change was added or removed from the codebase. If it was removed then that code is not part of the codebase anymore.
+            - Sometimes the changes are in pairs, one change with a 'removed' status and one with 'added', but they belong together, even when their line numbers are far apart.
+            Identify these pairs and DO NOT add the same comment to the removed and added part twice!
+            """)
+    static_analyzer_output: list[str] = Field(
+        description="""
+        - A list of multiple static code analyzers (tflint, tfsec, etc.) on the new code.
+        - The static_analyzer_output could be useful for understanding the potential issues introduced by the user, like missing references, undefined or unused variables etc.
+        - The static_analyzer_output could have issues which are not related to the current code changes, you MUST ignore these issues as they weren't introduced by this PR.
+        """)
 def get_code_reviewer_chain(app: FastAPI):
     """
     Retrieves the initialized CodeReviewer instance from FastAPI app state.
@@ -129,9 +150,9 @@ def run_stateless_runs_post(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        # context_files = review_request.context_files
-        # changes = review_request.changes
-        # static_analyzer_output = review_request.static_analyzer_output
+        context_files = review_request.context_files
+        changes = review_request.changes
+        static_analyzer_output = review_request.static_analyzer_output
 
         # if not context_files or not changes or not static_analyzer_output:
         #     raise HTTPException(
@@ -144,9 +165,8 @@ def run_stateless_runs_post(
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
 
-        static_analyzer_response = review_request.static_analyzer_output
         codereview = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                     static_analyzer_output=static_analyzer_response)
+                                     static_analyzer_output=static_analyzer_output)
 
         response: ReviewComments = code_reviewer_chain(get_model_dump_with_metadata(codereview)).invoke({})
 
