@@ -32,6 +32,7 @@ from fastapi.routing import APIRoute
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
 from pydantic import SecretStr
+from app.utils.chain import create_code_reviewer_chain
 from starlette.middleware.cors import CORSMiddleware
 from app.api.routes.stateless_runs import router as stateless_runs_router
 from app.core.config import settings
@@ -123,7 +124,7 @@ def initialize_chain() -> BaseChatModel:
             ),
             temperature=float(os.getenv("OPENAI_TEMPERATURE", 0.7)),
         )
-    return llm_chain
+    return create_code_reviewer_chain(llm_chain)
 
 
 @asynccontextmanager

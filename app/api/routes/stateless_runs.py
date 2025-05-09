@@ -169,6 +169,7 @@ def run_stateless_runs_post(
                                      static_analyzer_output=[static_analyzer_output])
 
         response: ReviewComments = code_reviewer_chain(get_model_dump_with_metadata(codereview)).invoke({})
+        print(response)
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
