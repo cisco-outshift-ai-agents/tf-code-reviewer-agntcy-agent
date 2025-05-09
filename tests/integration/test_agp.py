@@ -72,7 +72,8 @@ async def test_agp_integration():
     graph = await build_graph()
     inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
     result = await graph.ainvoke(inputs)
-    print("the result is", result)
+
+
     response = result["messages"][-1].content
     t.log_outputs({"response":response})
 
