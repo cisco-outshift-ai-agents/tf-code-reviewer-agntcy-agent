@@ -70,7 +70,7 @@ class codeReviewInput(BaseModel):
             - Sometimes the changes are in pairs, one change with a 'removed' status and one with 'added', but they belong together, even when their line numbers are far apart.
             Identify these pairs and DO NOT add the same comment to the removed and added part twice!
             """)
-    static_analyzer_output: list[str] = Field(
+    static_analyzer_output: str = Field(
         description="""
         - A list of multiple static code analyzers (tflint, tfsec, etc.) on the new code.
         - The static_analyzer_output could be useful for understanding the potential issues introduced by the user, like missing references, undefined or unused variables etc.
@@ -169,9 +169,9 @@ def run_stateless_runs_post(
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
         code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                     static_analyzer_output=[review_request.static_analyzer_output])
+                                      static_analyzer_output=review_request.static_analyzer_output)
 
-        print("The final value of code_review" , get_model_dump_with_metadata(code_review).items())
+        print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
 
         response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(code_review).items())
 
@@ -266,7 +266,7 @@ async def create_and_wait_for_stateless_run_output(
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
         code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                      static_analyzer_output=[review_request.static_analyzer_output])
+                                      static_analyzer_output=review_request.static_analyzer_output)
 
         print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
 

@@ -41,8 +41,8 @@ def create_code_reviewer_chain(model: BaseChatModel, ) -> RunnableSerializable[d
         static_analyzer_output_description: {static_analyzer_output_description}
         
         Input:
-            files : {files}
-            changed_files: {changed}
+            files : {context_files}
+            changed_files: {changes}
             static_analyzer_output: {static_analyzer_output}
 
 
