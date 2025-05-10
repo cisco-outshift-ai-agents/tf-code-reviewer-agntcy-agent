@@ -22,24 +22,29 @@ from langchain_core.runnables import RunnableSerializable
 from app.models.models import ReviewComments
 
 
-def create_code_reviewer_chain(model: BaseChatModel,) -> RunnableSerializable[dict, dict | ReviewComments]:
-    def code_reviewer_chain(input_dict: dict) -> RunnableSerializable[dict, dict | ReviewComments]:
-        llm_with_structured_output = model.with_structured_output(ReviewComments)
+def create_code_reviewer_chain(model: BaseChatModel, ) -> RunnableSerializable[dict, dict | ReviewComments]:
+    llm_with_structured_output = model.with_structured_output(ReviewComments)
 
-        # If some lines are indented more than others, dedent can't normalize it effectively.
-        system_message = SystemMessagePromptTemplate.from_template("""
+    # If some lines are indented more than others, dedent can't normalize it effectively.
+    system_message = SystemMessagePromptTemplate.from_template("""
             You are an expert in Terraform and a diligent code reviewer.
             Your goal is to support the developer in writing safer, cleaner, and more maintainable Terraform code.
             Provide your feedback in a clear, concise, constructive, professional with explicit details.
             """)
 
-        user_message = HumanMessagePromptTemplate.from_template("""
+    user_message = HumanMessagePromptTemplate.from_template("""
 
         You will be given all files in the code base, the list of changed files and the static analyzer output.
+        
+        files_description : {files_description}
+        changed_files description: {changes_description}
+        static_analyzer_output_description: {static_analyzer_output_description}
+        
+        Input:
+            files : {files}
+            changed_files: {changed}
+            static_analyzer_output: {static_analyzer_output}
 
-        files : {files}
-        changed_files: {changed}
-        static_analyzer_output: {static_analyzer_output}
 
         Provide feedback based on the following best-practice categories:
             1. **Security**: Secrets management, IAM roles/policies, network configurations, etc.
@@ -71,13 +76,8 @@ def create_code_reviewer_chain(model: BaseChatModel,) -> RunnableSerializable[di
         - Make sure the properties of the comment are aligned with the change object's properties.
         - Make sure the comment messages are relevant and provide actionable items to the user.
         - Make sure you checked the static analyzer outputs.
-            """).format(files=input_dict["files"], changed=input_dict["changes"],
-                        static_analyzer_output=input_dict["static_analyzer_output"])
-        messages = [system_message, user_message]
-        prompt = ChatPromptTemplate.from_messages(messages)
-        return prompt | llm_with_structured_output
+            """)
 
-    return code_reviewer_chain
-
-
-
+    messages = [system_message, user_message]
+    prompt = ChatPromptTemplate.from_messages(messages)
+    return prompt | llm_with_structured_output
