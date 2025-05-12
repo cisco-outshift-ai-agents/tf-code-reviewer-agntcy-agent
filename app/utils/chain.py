@@ -33,15 +33,28 @@ def create_code_reviewer_chain(model: BaseChatModel, ) -> RunnableSerializable[d
             """)
 
     user_message = HumanMessagePromptTemplate.from_template("""
+        You will be given context_files, changed files and the static analyzer output.
+        class codeReviewInput(BaseModel):
+    context_files description : 
+            A list of all the Terraform files from the user
+    changed_files description: 
+            List of code changes across Terraform files. The changes have the following format:
+            - filename: the name of the file where the change was done
+            - start_line: the line number where the change was added
+            - changed_code: the code that was removed/added after the start line, there's a + or - sign at the beginning of every change line, it indicates if it was added or removed, ignore this sign.
+            - status: indicates if the changed_code was added/removed
+            - Changes with "removed" status mean that the code in that change was deleted from the codebase, it's not part of the code anymore.
+            - Changes with "added" status mean that the code in that change was added the codebase.
+            - Always focus on whether a change was added or removed from the codebase. If it was removed then that code is not part of the codebase anymore.
+            - Sometimes the changes are in pairs, one change with a 'removed' status and one with 'added', but they belong together, even when their line numbers are far apart.
+            Identify these pairs and DO NOT add the same comment to the removed and added part twice!
+    static_analyzer_output description:
+        - A list of multiple static code analyzers (tflint, tfsec, etc.) on the new code.
+        - The static_analyzer_output could be useful for understanding the potential issues introduced by the user, like missing references, undefined or unused variables etc.
+        - The static_analyzer_output could have issues which are not related to the current code changes, you MUST ignore these issues as they weren't introduced by this PR.
 
-        You will be given all files in the code base, the list of changed files and the static analyzer output.
-        
-        files_description : {files_description}
-        changed_files description: {changes_description}
-        static_analyzer_output_description: {static_analyzer_output_description}
-        
         Input:
-            files : {context_files}
+            context_filesfiles : {context_files}
             changed_files: {changes}
             static_analyzer_output: {static_analyzer_output}
 

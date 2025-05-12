@@ -54,31 +54,6 @@ logger = logging.getLogger(__name__)  # This will be "app.api.routes.<name>"
 INTERNAL_ERROR_MESSAGE = "An unexpected error occurred. Please try again later."
 
 
-class codeReviewInput(BaseModel):
-    files: Optional[list[dict]] = Field(default_factory=list,
-                                        description="""receive all the Terraform files from the user in the "FILES" list..""")
-    changes: list[dict] = Field(
-        description="""
-        List of code changes across Terraform files. The changes have the following format:
-            - filename: the name of the file where the change was done
-            - start_line: the line number where the change was added
-            - changed_code: the code that was removed/added after the start line, there's a + or - sign at the beginning of every change line, it indicates if it was added or removed, ignore this sign.
-            - status: indicates if the changed_code was added/removed
-            - Changes with "removed" status mean that the code in that change was deleted from the codebase, it's not part of the code anymore.
-            - Changes with "added" status mean that the code in that change was added the codebase.
-            - Always focus on whether a change was added or removed from the codebase. If it was removed then that code is not part of the codebase anymore.
-            - Sometimes the changes are in pairs, one change with a 'removed' status and one with 'added', but they belong together, even when their line numbers are far apart.
-            Identify these pairs and DO NOT add the same comment to the removed and added part twice!
-            """)
-    static_analyzer_output: str = Field(
-        description="""
-        - A list of multiple static code analyzers (tflint, tfsec, etc.) on the new code.
-        - The static_analyzer_output could be useful for understanding the potential issues introduced by the user, like missing references, undefined or unused variables etc.
-        - The static_analyzer_output could have issues which are not related to the current code changes, you MUST ignore these issues as they weren't introduced by this PR.
-        """
-    )
-
-
 def get_code_reviewer_chain(app: FastAPI):
     """
     Retrieves the initialized CodeReviewer instance from FastAPI app state.
@@ -168,12 +143,16 @@ def run_stateless_runs_post(
 
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
-        code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                      static_analyzer_output=review_request.static_analyzer_output)
+        # code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
+        #                               static_analyzer_output=review_request.static_analyzer_output)
 
-        print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
-
-        response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(code_review).items())
+        # print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
+        code_review_input = {
+        "context_files": review_request.context_files,
+        "changes":review_request.changes,
+        "static_analyzer_output": review_request.static_analyzer_output
+        }
+        response: ReviewComments = code_reviewer_chain.invoke(code_review_input)
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
@@ -265,12 +244,18 @@ async def create_and_wait_for_stateless_run_output(
 
         # ---- Code Reviewer Logic ----
         # Construct LLM prompt
-        code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
-                                      static_analyzer_output=review_request.static_analyzer_output)
-
-        print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
-
-        response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(code_review).items())
+        # code_review = codeReviewInput(files=review_request.context_files, changes=review_request.changes,
+        #                               static_analyzer_output=review_request.static_analyzer_output)
+        #
+        # print("The final value of code_review", get_model_dump_with_metadata(code_review).items())
+        #
+        # response: ReviewComments = code_reviewer_chain.invoke(get_model_dump_with_metadata(code_review).items())
+        code_review_input = {
+            "context_files": review_request.context_files,
+            "changes": review_request.changes,
+            "static_analyzer_output": review_request.static_analyzer_output
+        }
+        response: ReviewComments = code_reviewer_chain.invoke(code_review_input)
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
         logging.error("HTTP error during run processing: %s", http_exc.detail)
