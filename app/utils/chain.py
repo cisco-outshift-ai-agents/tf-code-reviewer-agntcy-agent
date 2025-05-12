@@ -35,8 +35,12 @@ def create_code_reviewer_chain(model: BaseChatModel, ) -> RunnableSerializable[d
     user_message = HumanMessagePromptTemplate.from_template("""
         You will be given context_files, changed files and the static analyzer output.
         class codeReviewInput(BaseModel):
+    
     context_files description : 
-            A list of all the Terraform files from the user
+            A list of all the Terraform files. The context file have following format:
+                - path: the file name
+                - content: the original content of the file
+    
     changed_files description: 
             List of code changes across Terraform files. The changes have the following format:
             - filename: the name of the file where the change was done
@@ -48,6 +52,7 @@ def create_code_reviewer_chain(model: BaseChatModel, ) -> RunnableSerializable[d
             - Always focus on whether a change was added or removed from the codebase. If it was removed then that code is not part of the codebase anymore.
             - Sometimes the changes are in pairs, one change with a 'removed' status and one with 'added', but they belong together, even when their line numbers are far apart.
             Identify these pairs and DO NOT add the same comment to the removed and added part twice!
+    
     static_analyzer_output description:
         - A list of multiple static code analyzers (tflint, tfsec, etc.) on the new code.
         - The static_analyzer_output could be useful for understanding the potential issues introduced by the user, like missing references, undefined or unused variables etc.
