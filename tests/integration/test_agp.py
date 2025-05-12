@@ -20,6 +20,7 @@ from agp_client import build_graph
 from langchain_core.messages import HumanMessage
 from langsmith import testing as t
 
+
 @pytest.mark.langsmith(test_suite_name="TF Code Reviewer AGP Integration Test")
 @pytest.mark.asyncio
 async def test_agp_integration():
@@ -66,15 +67,15 @@ async def test_agp_integration():
 
     expected_output = "The security group allows unrestricted ingress"
 
-    t.log_inputs({"query":tf_input})
-    t.log_reference_outputs({"reference_outputs":expected_output})
+    t.log_inputs({"query": tf_input})
+    t.log_reference_outputs({"reference_outputs": expected_output})
 
     graph = await build_graph()
     inputs = {"messages": [HumanMessage(content=json.dumps(tf_input))]}
     result = await graph.ainvoke(inputs)
 
     response = result["messages"][-1].content
-    t.log_outputs({"response":response})
+    t.log_outputs({"response": response})
 
     # Add validation scores
     t.log_feedback(key="contains_expected_text", score='unrestricted ingress' in response.lower())
