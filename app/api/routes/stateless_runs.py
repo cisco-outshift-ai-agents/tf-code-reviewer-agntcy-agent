@@ -18,11 +18,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Union
+from typing import Union, Optional
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request, status
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel, Field
 
 from agent_workflow_server.generated.models.content import Content as SrvContent
 from agent_workflow_server.generated.models.message import Message as SrvMessage
@@ -81,7 +81,7 @@ def get_code_reviewer_chain(app: FastAPI):
     tags=["Stateless Runs"],
 )
 def run_stateless_runs_post(
-    body: RunCreateStateless, request: Request
+        body: RunCreateStateless, request: Request
 ) -> Union[ReviewResponse, ErrorResponse]:
     """
     Create Background Run
@@ -114,9 +114,11 @@ def run_stateless_runs_post(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        context_files = review_request.context_files
-        changes = review_request.changes
-        static_analyzer_output = review_request.static_analyzer_output
+        code_review_input = {
+            "context_files": review_request.context_files,
+            "changes": review_request.changes,
+            "static_analyzer_output": review_request.static_analyzer_output
+        }
 
         # if not context_files or not changes or not static_analyzer_output:
         #     raise HTTPException(
@@ -126,22 +128,7 @@ def run_stateless_runs_post(
 
         logger.info("Received valid request. Processing code review.")
 
-        # ---- Code Reviewer Logic ----
-        # Construct LLM prompt
-
-        response: ReviewComments = code_reviewer_chain.invoke(
-            {
-                "question": wrap_prompt(
-                    "FILES:",
-                    f"{'\n'.join(map(str, context_files))}",
-                    "",
-                    "CHANGES:" f"{changes}",
-                    "",
-                    "STATIC_ANALYZER_OUTPUT:",
-                    f"{static_analyzer_output}",
-                )
-            }
-        )
+        response: ReviewComments = code_reviewer_chain.invoke(code_review_input)
 
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
@@ -195,7 +182,7 @@ def run_stateless_runs_post(
     response_model_by_alias=True,
 )
 async def create_and_wait_for_stateless_run_output(
-    body: SrvRunCreateStateless, request: Request
+        body: SrvRunCreateStateless, request: Request
 ) -> SrvRunWaitResponseStateless:
     """
     Create Run, Wait for Output
@@ -228,29 +215,14 @@ async def create_and_wait_for_stateless_run_output(
                 detail=f"Validation failed: {e}",
             ) from e
         # Extract fields
-        context_files = review_request.context_files
-        changes = review_request.changes
-        static_analyzer_output = review_request.static_analyzer_output
+        code_review_input = {
+            "context_files": review_request.context_files,
+            "changes": review_request.changes,
+            "static_analyzer_output": review_request.static_analyzer_output
+        }
 
         logger.info("Received valid request. Processing code review.")
-
-        # ---- Code Reviewer Logic ----
-        # Construct LLM prompt
-
-        response: ReviewComments = code_reviewer_chain.invoke(
-            {
-                "question": wrap_prompt(
-                    "FILES:",
-                    f"{'\n'.join(map(str, context_files))}",
-                    "",
-                    "CHANGES:" f"{changes}",
-                    "",
-                    "STATIC_ANALYZER_OUTPUT:",
-                    f"{static_analyzer_output}",
-                )
-            }
-        )
-
+        response: ReviewComments = code_reviewer_chain.invoke(code_review_input)
     except HTTPException as http_exc:
         # Log HTTP exceptions and re-raise them so that FastAPI can generate the appropriate response.
         logging.error("HTTP error during run processing: %s", http_exc.detail)
