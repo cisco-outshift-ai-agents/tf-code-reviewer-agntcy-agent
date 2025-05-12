@@ -269,23 +269,6 @@ async def create_and_wait_for_stateless_run_output(
         comment.model_dump() for comment in response.issues if comment.line_number != 0
     ]
 
-    payload = ReviewResponse(
-        agent_id=body.agent_id or "default-agent",
-        output={
-            "messages": [
-                {"role": "assistant", "content": json.dumps(filtered_comments)}
-            ]
-        },
-        model="gpt-4o",
-        metadata={
-            "id": (
-                body.metadata.get("id", "default-id") if body.metadata else "default-id"
-            )
-        },
-    )
-
-    logger.debug(f"Returning review response: {payload.model_dump()}")
-
     try:
         # Build WrkFlow Srv Run Output
         message = SrvMessage(

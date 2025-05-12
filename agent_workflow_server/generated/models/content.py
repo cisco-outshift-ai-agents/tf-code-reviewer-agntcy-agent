@@ -139,8 +139,9 @@ class Content(BaseModel):
         else:
             return json.dumps(self.actual_instance)
 
+    # This can return primittive types as well as Dict so the return hint needs to be Any
     @model_serializer()
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> Any:
         """Returns the dict representation of the actual instance"""
         if self.actual_instance is None:
             return None
