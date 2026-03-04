@@ -1,3 +1,6 @@
+> [!CAUTION]
+> **This repository is no longer maintained.**  It is archived for informational purposes.
+ 
 # Terraform Code Reviewer AI Agent
 
 [![Release](https://img.shields.io/github/v/release/cisco-outshift-ai-agents/tf-code-reviewer-agntcy-agent?display_name=tag)](CHANGELOG.md)
